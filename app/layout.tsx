@@ -31,7 +31,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           <Header />
-          <main className="container mx-auto px-4 py-8 min-h-screen">
+          <main className="container mx-auto px-4 py-8 min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
             {children}
           </main>
         </AuthProvider>

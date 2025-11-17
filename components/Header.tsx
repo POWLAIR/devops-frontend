@@ -11,17 +11,17 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-blue-600 text-white shadow-md">
+    <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-6">
-            <Link href="/" className="text-xl font-bold hover:text-blue-200">
+            <Link href="/" className="text-xl font-bold hover:text-blue-100 transition-colors">
               DevOps MicroService App
             </Link>
             {isAuthenticated && (
               <Link
                 href="/orders"
-                className="hover:text-blue-200 transition-colors"
+                className="hover:text-blue-100 transition-colors font-medium"
               >
                 Commandes
               </Link>
@@ -30,12 +30,12 @@ export default function Header() {
           <nav className="flex items-center space-x-4">
             {isAuthenticated ? (
               <>
-                <span className="text-sm">
-                  Connecté en tant que: <strong>{user?.email}</strong>
+                <span className="text-sm text-blue-50">
+                  Connecté en tant que: <strong className="font-semibold">{user?.email}</strong>
                 </span>
                 <button
                   onClick={handleLogout}
-                  className="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded transition-colors"
+                  className="bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded-md transition-colors font-medium shadow-sm"
                 >
                   Déconnexion
                 </button>
@@ -44,13 +44,13 @@ export default function Header() {
               <>
                 <Link
                   href="/login"
-                  className="hover:text-blue-200 transition-colors"
+                  className="hover:text-blue-100 transition-colors font-medium"
                 >
                   Connexion
                 </Link>
                 <Link
                   href="/register"
-                  className="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded transition-colors"
+                  className="bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded-md transition-colors font-medium shadow-sm"
                 >
                   Inscription
                 </Link>

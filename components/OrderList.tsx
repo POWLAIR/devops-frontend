@@ -57,12 +57,12 @@ export default function OrderList({ onEdit, onDelete, refreshTrigger }: OrderLis
   };
 
   if (isLoading) {
-    return <div className="text-center py-8">Chargement des commandes...</div>;
+    return <div className="text-center py-12 text-slate-600 dark:text-slate-300 text-lg">Chargement des commandes...</div>;
   }
 
   if (error) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg">
         {error}
       </div>
     );
@@ -70,7 +70,7 @@ export default function OrderList({ onEdit, onDelete, refreshTrigger }: OrderLis
 
   if (orders.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-12 text-slate-500 dark:text-slate-400 text-lg">
         Aucune commande pour le moment
       </div>
     );
@@ -78,51 +78,51 @@ export default function OrderList({ onEdit, onDelete, refreshTrigger }: OrderLis
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold mb-4">Mes commandes</h2>
+      <h2 className="text-3xl font-bold mb-6 text-slate-800 dark:text-slate-100">Mes commandes</h2>
       <div className="grid gap-4">
         {orders.map((order) => (
           <div
             key={order.id}
-            className="border border-gray-300 rounded-lg p-4 hover:shadow-md transition-shadow"
+            className="border border-slate-200 dark:border-slate-700 rounded-xl p-6 hover:shadow-lg transition-all duration-300 bg-white dark:bg-slate-900/50"
           >
-            <div className="flex justify-between items-start mb-2">
+            <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="font-semibold text-lg">Commande #{order.id.slice(0, 8)}</h3>
-                <p className="text-sm text-gray-500">
+                <h3 className="font-semibold text-xl text-slate-800 dark:text-slate-100 mb-1">Commande #{order.id.slice(0, 8)}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Créée le: {new Date(order.createdAt).toLocaleDateString('fr-FR')}
                 </p>
               </div>
               <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                className={`px-3 py-1 rounded-full text-sm font-semibold ${
                   order.status === 'completed'
-                    ? 'bg-green-100 text-green-800'
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
                     : order.status === 'processing'
-                    ? 'bg-blue-100 text-blue-800'
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
                     : order.status === 'cancelled'
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-yellow-100 text-yellow-800'
+                    ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
                 }`}
               >
                 {order.status}
               </span>
             </div>
-            <div className="mb-2">
-              <p className="text-sm text-gray-600">
-                {order.items.length} article(s) - Total: {order.total.toFixed(2)} €
+            <div className="mb-4">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                {order.items.length} article(s) - Total: <span className="font-semibold text-blue-600 dark:text-blue-400">{order.total.toFixed(2)} €</span>
               </p>
             </div>
-            <div className="flex gap-2 mt-4">
+            <div className="flex gap-3 mt-4">
               {onEdit && (
                 <button
                   onClick={() => onEdit(order)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm hover:shadow-md"
                 >
                   Modifier
                 </button>
               )}
               <button
                 onClick={() => handleDelete(order.id)}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium shadow-sm hover:shadow-md"
               >
                 Supprimer
               </button>

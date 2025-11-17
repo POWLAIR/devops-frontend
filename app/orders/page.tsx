@@ -30,12 +30,12 @@ export default function OrdersPage() {
   return (
     <ProtectedRoute>
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Gestion des commandes</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100">Gestion des commandes</h1>
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors"
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-md hover:shadow-lg"
             >
               + Nouvelle commande
             </button>
@@ -43,7 +43,7 @@ export default function OrdersPage() {
         </div>
 
         {showForm ? (
-          <div className="bg-white border border-gray-300 rounded-lg p-6 shadow-md mb-6">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-8 shadow-xl mb-6">
             <OrderForm
               order={editingOrder}
               onSuccess={handleSuccess}
@@ -51,7 +51,7 @@ export default function OrdersPage() {
             />
           </div>
         ) : (
-          <div className="bg-white border border-gray-300 rounded-lg p-6 shadow-md">
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-8 shadow-xl">
             <OrderList
               onEdit={handleEdit}
               refreshTrigger={refreshTrigger}

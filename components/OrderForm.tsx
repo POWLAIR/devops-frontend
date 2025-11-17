@@ -76,21 +76,21 @@ export default function OrderForm({ order, onSuccess, onCancel }: OrderFormProps
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <h2 className="text-2xl font-bold">
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100">
         {order ? 'Modifier la commande' : 'Nouvelle commande'}
       </h2>
 
       <div className="space-y-4">
         {items.map((item, index) => (
-          <div key={index} className="border border-gray-300 rounded p-4 space-y-2">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium">Article {index + 1}</h3>
+          <div key={index} className="border border-slate-200 dark:border-slate-700 rounded-lg p-5 space-y-3 bg-slate-50 dark:bg-slate-900/50">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-semibold text-slate-700 dark:text-slate-200">Article {index + 1}</h3>
               {items.length > 1 && (
                 <button
                   type="button"
                   onClick={() => removeItem(index)}
-                  className="text-red-600 hover:text-red-800"
+                  className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium transition-colors"
                 >
                   Supprimer
                 </button>
@@ -98,29 +98,29 @@ export default function OrderForm({ order, onSuccess, onCancel }: OrderFormProps
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Nom</label>
+                <label className="block text-sm font-semibold mb-2 text-slate-700 dark:text-slate-200">Nom</label>
                 <input
                   type="text"
                   value={item.name}
                   onChange={(e) => updateItem(index, 'name', e.target.value)}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                   placeholder="Nom de l'article"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Quantité</label>
+                <label className="block text-sm font-semibold mb-2 text-slate-700 dark:text-slate-200">Quantité</label>
                 <input
                   type="number"
                   min="1"
                   value={item.quantity}
                   onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Prix (€)</label>
+                <label className="block text-sm font-semibold mb-2 text-slate-700 dark:text-slate-200">Prix (€)</label>
                 <input
                   type="number"
                   min="0"
@@ -128,7 +128,7 @@ export default function OrderForm({ order, onSuccess, onCancel }: OrderFormProps
                   value={item.price}
                   onChange={(e) => updateItem(index, 'price', parseFloat(e.target.value) || 0)}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                 />
               </div>
             </div>
@@ -139,20 +139,20 @@ export default function OrderForm({ order, onSuccess, onCancel }: OrderFormProps
       <button
         type="button"
         onClick={addItem}
-        className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+        className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors font-medium"
       >
         + Ajouter un article
       </button>
 
-      <div className="border-t pt-4">
+      <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
         <div className="flex justify-between items-center mb-4">
-          <span className="text-lg font-semibold">Total:</span>
-          <span className="text-xl font-bold">{calculateTotal().toFixed(2)} €</span>
+          <span className="text-lg font-semibold text-slate-700 dark:text-slate-200">Total:</span>
+          <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{calculateTotal().toFixed(2)} €</span>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
@@ -161,7 +161,7 @@ export default function OrderForm({ order, onSuccess, onCancel }: OrderFormProps
         <button
           type="submit"
           disabled={isLoading}
-          className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors font-semibold shadow-md hover:shadow-lg"
         >
           {isLoading ? 'Enregistrement...' : order ? 'Mettre à jour' : 'Créer la commande'}
         </button>
@@ -169,7 +169,7 @@ export default function OrderForm({ order, onSuccess, onCancel }: OrderFormProps
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+            className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors font-medium"
           >
             Annuler
           </button>
