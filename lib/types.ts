@@ -49,14 +49,23 @@ export interface OrderItem {
   price: number;
 }
 
-export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'cancelled';
 
 export interface CreateOrderRequest {
-  items: Omit<OrderItem, 'id'>[];
+  items: Array<{
+    productId: string;
+    quantity: number;
+    price: number;
+  }>;
+  status?: OrderStatus;
 }
 
 export interface UpdateOrderRequest {
-  items?: Omit<OrderItem, 'id'>[];
+  items?: Array<{
+    productId: string;
+    quantity: number;
+    price: number;
+  }>;
   status?: OrderStatus;
 }
 

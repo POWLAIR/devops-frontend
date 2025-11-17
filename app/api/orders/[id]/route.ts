@@ -3,6 +3,34 @@ import { NextResponse } from 'next/server';
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3000';
 const TIMEOUT_MS = 10000; // 10 secondes
 
+// Transformer les données du backend (productId) vers le frontend (name)
+function transformOrderFromBackend(order: any) {
+  if (!order) return order;
+  
+  // Si items est une string JSON, la parser
+  let items = order.items;
+  if (typeof items === 'string') {
+    try {
+      items = JSON.parse(items);
+    } catch {
+      items = [];
+    }
+  }
+  
+  // Transformer productId en name
+  const transformedItems = Array.isArray(items) ? items.map((item: any, index: number) => ({
+    id: item.id || `item-${index}`,
+    name: item.productId || item.name || '',
+    quantity: item.quantity || 0,
+    price: item.price || 0,
+  })) : [];
+  
+  return {
+    ...order,
+    items: transformedItems,
+  };
+}
+
 async function fetchWithTimeout(url: string, options: RequestInit, timeout: number = TIMEOUT_MS): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -57,7 +85,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(data, { status: response.status });
+    // Transformer les données du backend vers le format frontend
+    const transformedData = transformOrderFromBackend(data);
+
+    return NextResponse.json(transformedData, { status: response.status });
   } catch (error) {
     console.error('Error in order GET proxy:', error);
     const message = error instanceof Error ? error.message : 'Erreur de connexion au service de commandes';
@@ -104,7 +135,10 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json(data, { status: response.status });
+    // Transformer les données du backend vers le format frontend
+    const transformedData = transformOrderFromBackend(data);
+
+    return NextResponse.json(transformedData, { status: response.status });
   } catch (error) {
     console.error('Error in order PUT proxy:', error);
     const message = error instanceof Error ? error.message : 'Erreur de connexion au service de commandes';

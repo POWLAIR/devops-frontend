@@ -54,11 +54,24 @@ export default function OrderForm({ order, onSuccess, onCancel }: OrderFormProps
     try {
       if (order) {
         // Mise à jour
-        const updateData: UpdateOrderRequest = { items };
+        const updateData: UpdateOrderRequest = { 
+          items: items.map(item => ({
+            productId: item.name,
+            quantity: item.quantity,
+            price: item.price
+          }))
+        };
         await apiClient.updateOrder(order.id, updateData);
       } else {
-        // Création
-        const createData: CreateOrderRequest = { items };
+        // Création - mapper name vers productId et ajouter status
+        const createData: CreateOrderRequest = { 
+          items: items.map(item => ({
+            productId: item.name,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          status: 'pending'
+        };
         await apiClient.createOrder(createData);
       }
       if (onSuccess) {
