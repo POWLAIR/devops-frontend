@@ -32,7 +32,7 @@ export default function RegisterForm() {
 
     try {
       await register(email, password);
-      router.push('/login');
+      router.push('/dashboard');
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
