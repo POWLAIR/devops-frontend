@@ -94,9 +94,9 @@ export default function OrderList({ onEdit, onDelete, refreshTrigger }: OrderLis
               </div>
               <span
                 className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                  order.status === 'completed'
+                  order.status === 'shipped'
                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
-                    : order.status === 'processing'
+                    : order.status === 'confirmed'
                     ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
                     : order.status === 'cancelled'
                     ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'

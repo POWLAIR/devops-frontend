@@ -54,7 +54,7 @@ export default function OrderForm({ order, onSuccess, onCancel }: OrderFormProps
     try {
       if (order) {
         // Mise à jour
-        const updateData: UpdateOrderRequest = { 
+        const updateData: UpdateOrderRequest = {
           items: items.map(item => ({
             productId: item.name,
             quantity: item.quantity,
@@ -64,7 +64,7 @@ export default function OrderForm({ order, onSuccess, onCancel }: OrderFormProps
         await apiClient.updateOrder(order.id, updateData);
       } else {
         // Création - mapper name vers productId et ajouter status
-        const createData: CreateOrderRequest = { 
+        const createData: CreateOrderRequest = {
           items: items.map(item => ({
             productId: item.name,
             quantity: item.quantity,
