@@ -1,3 +1,10 @@
+// Types pour les erreurs API
+export interface ApiError {
+  message: string;
+  statusCode?: number;
+  code?: string;
+}
+
 // Types pour l'authentification
 export interface User {
   id: string;

@@ -1,12 +1,33 @@
 import { NextResponse } from 'next/server';
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:8000';
+const TIMEOUT_MS = 10000; // 10 secondes
+
+async function fetchWithTimeout(url: string, options: RequestInit, timeout: number = TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Timeout: Le service d\'authentification ne répond pas');
+    }
+    throw error;
+  }
+}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const response = await fetch(`${AUTH_SERVICE_URL}/login`, {
+    const response = await fetchWithTimeout(`${AUTH_SERVICE_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -18,7 +39,7 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       return NextResponse.json(
-        { message: data.message || 'Erreur lors de la connexion' },
+        { message: data.message || data.detail || 'Erreur lors de la connexion' },
         { status: response.status }
       );
     }
@@ -26,8 +47,9 @@ export async function POST(request: Request) {
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('Error in login proxy:', error);
+    const message = error instanceof Error ? error.message : 'Erreur de connexion au service d\'authentification';
     return NextResponse.json(
-      { message: 'Erreur de connexion au service d\'authentification' },
+      { message },
       { status: 500 }
     );
   }

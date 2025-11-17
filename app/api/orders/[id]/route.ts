@@ -1,6 +1,27 @@
 import { NextResponse } from 'next/server';
 
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3000';
+const TIMEOUT_MS = 10000; // 10 secondes
+
+async function fetchWithTimeout(url: string, options: RequestInit, timeout: number = TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Timeout: Le service de commandes ne répond pas');
+    }
+    throw error;
+  }
+}
 
 export async function GET(
   request: Request,
@@ -19,7 +40,7 @@ export async function GET(
     const token = authHeader.substring(7);
     const { id } = await params;
 
-    const response = await fetch(`${ORDER_SERVICE_URL}/orders/${id}`, {
+    const response = await fetchWithTimeout(`${ORDER_SERVICE_URL}/orders/${id}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -31,7 +52,7 @@ export async function GET(
 
     if (!response.ok) {
       return NextResponse.json(
-        { message: data.message || 'Erreur lors de la récupération de la commande' },
+        { message: data.message || data.detail || 'Erreur lors de la récupération de la commande' },
         { status: response.status }
       );
     }
@@ -39,8 +60,9 @@ export async function GET(
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('Error in order GET proxy:', error);
+    const message = error instanceof Error ? error.message : 'Erreur de connexion au service de commandes';
     return NextResponse.json(
-      { message: 'Erreur de connexion au service de commandes' },
+      { message },
       { status: 500 }
     );
   }
@@ -64,7 +86,7 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const response = await fetch(`${ORDER_SERVICE_URL}/orders/${id}`, {
+    const response = await fetchWithTimeout(`${ORDER_SERVICE_URL}/orders/${id}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -77,7 +99,7 @@ export async function PUT(
 
     if (!response.ok) {
       return NextResponse.json(
-        { message: data.message || 'Erreur lors de la mise à jour de la commande' },
+        { message: data.message || data.detail || 'Erreur lors de la mise à jour de la commande' },
         { status: response.status }
       );
     }
@@ -85,8 +107,9 @@ export async function PUT(
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('Error in order PUT proxy:', error);
+    const message = error instanceof Error ? error.message : 'Erreur de connexion au service de commandes';
     return NextResponse.json(
-      { message: 'Erreur de connexion au service de commandes' },
+      { message },
       { status: 500 }
     );
   }
@@ -109,7 +132,7 @@ export async function DELETE(
     const token = authHeader.substring(7);
     const { id } = await params;
 
-    const response = await fetch(`${ORDER_SERVICE_URL}/orders/${id}`, {
+    const response = await fetchWithTimeout(`${ORDER_SERVICE_URL}/orders/${id}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -120,7 +143,7 @@ export async function DELETE(
     if (!response.ok) {
       const data = await response.json();
       return NextResponse.json(
-        { message: data.message || 'Erreur lors de la suppression de la commande' },
+        { message: data.message || data.detail || 'Erreur lors de la suppression de la commande' },
         { status: response.status }
       );
     }
@@ -128,8 +151,9 @@ export async function DELETE(
     return NextResponse.json({ message: 'Commande supprimée' }, { status: 200 });
   } catch (error) {
     console.error('Error in order DELETE proxy:', error);
+    const message = error instanceof Error ? error.message : 'Erreur de connexion au service de commandes';
     return NextResponse.json(
-      { message: 'Erreur de connexion au service de commandes' },
+      { message },
       { status: 500 }
     );
   }
