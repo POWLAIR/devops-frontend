@@ -1,5 +1,5 @@
 import { getToken, removeToken } from './auth';
-import type { ApiError, AuthResponse, LoginRequest, RegisterRequest, ValidateResponse, Order, CreateOrderRequest, UpdateOrderRequest } from './types';
+import type { AuthResponse, LoginRequest, RegisterRequest, ValidateResponse, Order, CreateOrderRequest, UpdateOrderRequest } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -29,9 +29,9 @@ export class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const token = getToken();
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
 
     if (token) {
