@@ -20,7 +20,7 @@ export default function LoginForm() {
 
     try {
       await login(email, password);
-      router.push('/dashboard');
+      router.push('/orders');
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
