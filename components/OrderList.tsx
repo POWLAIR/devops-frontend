@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient, ApiError } from '@/lib/api-client';
+import { useToast } from '@/lib/toast';
 import type { Order } from '@/lib/types';
 
 interface OrderListProps {
@@ -11,6 +12,7 @@ interface OrderListProps {
 }
 
 export default function OrderList({ onEdit, onDelete, refreshTrigger }: OrderListProps) {
+  const { error: errorToast, success } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,12 +48,13 @@ export default function OrderList({ onEdit, onDelete, refreshTrigger }: OrderLis
       if (onDelete) {
         onDelete(orderId);
       }
+      success('Commande supprimée avec succès');
       fetchOrders();
     } catch (err) {
       if (err instanceof ApiError) {
-        alert(err.message);
+        errorToast(err.message);
       } else {
-        alert('Erreur lors de la suppression');
+        errorToast('Erreur lors de la suppression');
       }
     }
   };

@@ -2,13 +2,15 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import ProductSection from '@/components/home/ProductSection';
+import CategoryGrid from '@/components/home/CategoryGrid';
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="text-center py-12">
+    <div className="max-w-7xl mx-auto">
+      <div className="text-center py-12 mb-12">
         <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
           Bienvenue sur DevOps MicroService App
         </h1>
@@ -17,7 +19,25 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 mt-8">
+      {/* Categories */}
+      <CategoryGrid />
+
+      {/* Popular Products */}
+      <ProductSection
+        title="Produits populaires"
+        apiUrl="/api/products?popular=true"
+        limit={8}
+      />
+
+      {/* Recent Products */}
+      <ProductSection
+        title="Nouveautés"
+        apiUrl="/api/products?recent=true"
+        limit={8}
+      />
+
+      {/* Auth Section */}
+      <div className="grid md:grid-cols-2 gap-6 mt-12 mb-12">
         {!isAuthenticated ? (
           <>
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-8 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -51,16 +71,25 @@ export default function Home() {
             <p className="text-slate-600 dark:text-slate-300 mb-6">
               Vous êtes connecté. Accédez à vos commandes ou créez-en une nouvelle.
             </p>
-            <Link
-              href="/orders"
-              className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md hover:shadow-lg"
-            >
-              Voir mes commandes
-            </Link>
+            <div className="flex gap-4">
+              <Link
+                href="/products"
+                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md hover:shadow-lg"
+              >
+                Voir le catalogue
+              </Link>
+              <Link
+                href="/orders"
+                className="inline-block bg-slate-600 text-white px-6 py-3 rounded-lg hover:bg-slate-700 transition-colors font-medium shadow-md hover:shadow-lg"
+              >
+                Mes commandes
+              </Link>
+            </div>
           </div>
         )}
       </div>
 
+      {/* About Section */}
       <div className="mt-12 border-t border-slate-200 dark:border-slate-700 pt-8">
         <h2 className="text-2xl font-semibold mb-4 text-slate-800 dark:text-slate-100">À propos</h2>
         <p className="text-slate-600 dark:text-slate-300">
@@ -69,6 +98,7 @@ export default function Home() {
         <ul className="list-disc list-inside mt-4 text-slate-600 dark:text-slate-300 space-y-2">
           <li>API Gateway (Next.js) - Point d'entrée unique</li>
           <li>Auth Service (FastAPI) - Authentification et autorisation</li>
+          <li>Product Service (NestJS) - Catalogue produits, favoris, avis</li>
           <li>Order Service (NestJS) - Gestion des commandes</li>
         </ul>
       </div>

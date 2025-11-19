@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import ProductGrid from '@/components/products/ProductGrid';
-import ProductFilters from '@/components/products/ProductFilters';
+import ProductFilters, { SortOption } from '@/components/products/ProductFilters';
+import Skeleton from '@/components/ui/Skeleton';
 
 interface Product {
   id: string;
@@ -12,26 +13,37 @@ interface Product {
   imageUrl?: string;
   category: string;
   rating: number;
+  reviewCount?: number;
   stock: number;
+  createdAt?: string;
 }
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOption, setSortOption] = useState<SortOption>('default');
+  const [minPrice, setMinPrice] = useState(0);
+  const [maxPrice, setMaxPrice] = useState(1000);
+  const [inStockOnly, setInStockOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Calculate max price from products
+  useEffect(() => {
+    if (products.length > 0) {
+      const max = Math.max(...products.map(p => p.price));
+      if (maxPrice === 1000 || maxPrice < max) {
+        setMaxPrice(Math.ceil(max));
+      }
+    }
+  }, [products]);
 
   useEffect(() => {
     fetchProducts();
     fetchCategories();
   }, []);
-
-  useEffect(() => {
-    filterProducts();
-  }, [products, selectedCategory, searchQuery]);
 
   const fetchProducts = async () => {
     try {
@@ -58,13 +70,15 @@ export default function ProductsPage() {
     }
   };
 
-  const filterProducts = () => {
-    let filtered = products;
+  const filteredAndSortedProducts = useMemo(() => {
+    let filtered = [...products];
 
+    // Category filter
     if (selectedCategory) {
       filtered = filtered.filter((p) => p.category === selectedCategory);
     }
 
+    // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -74,8 +88,42 @@ export default function ProductsPage() {
       );
     }
 
-    setFilteredProducts(filtered);
-  };
+    // Price range filter
+    filtered = filtered.filter((p) => p.price >= minPrice && p.price <= maxPrice);
+
+    // Stock filter
+    if (inStockOnly) {
+      filtered = filtered.filter((p) => p.stock > 0);
+    }
+
+    // Sort
+    switch (sortOption) {
+      case 'price-asc':
+        filtered.sort((a, b) => a.price - b.price);
+        break;
+      case 'price-desc':
+        filtered.sort((a, b) => b.price - a.price);
+        break;
+      case 'rating-desc':
+        filtered.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'popularity-desc':
+        filtered.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+        break;
+      case 'newest':
+        filtered.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+        break;
+      default:
+        // Keep original order
+        break;
+    }
+
+    return filtered;
+  }, [products, selectedCategory, searchQuery, sortOption, minPrice, maxPrice, inStockOnly]);
 
   const handleCategoryChange = (category: string | null) => {
     setSelectedCategory(category);
@@ -90,12 +138,14 @@ export default function ProductsPage() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto">
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-slate-600 dark:text-slate-400">
-            Chargement des produits...
-          </p>
+        <div className="mb-8">
+          <Skeleton className="h-10 w-64 mb-2" variant="text" />
+          <Skeleton className="h-4 w-96" variant="text" />
         </div>
+        <div className="mb-6">
+          <Skeleton className="h-32 w-full rounded-xl" variant="rectangular" />
+        </div>
+        <ProductGrid products={[]} loading={true} />
       </div>
     );
   }
@@ -127,13 +177,23 @@ export default function ProductsPage() {
         onCategoryChange={handleCategoryChange}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
+        sortOption={sortOption}
+        onSortChange={setSortOption}
+        minPrice={minPrice}
+        maxPrice={maxPrice}
+        onPriceRangeChange={(min, max) => {
+          setMinPrice(min);
+          setMaxPrice(max);
+        }}
+        inStockOnly={inStockOnly}
+        onInStockOnlyChange={setInStockOnly}
       />
 
       <div className="mb-4 text-sm text-slate-600 dark:text-slate-400">
-        {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''} trouvé{filteredProducts.length > 1 ? 's' : ''}
+        {filteredAndSortedProducts.length} produit{filteredAndSortedProducts.length > 1 ? 's' : ''} trouvé{filteredAndSortedProducts.length > 1 ? 's' : ''}
       </div>
 
-      <ProductGrid products={filteredProducts} />
+      <ProductGrid products={filteredAndSortedProducts} />
     </div>
   );
 }

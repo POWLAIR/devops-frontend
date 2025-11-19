@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useToast } from '@/lib/toast';
 import { getToken } from '@/lib/auth';
 
 interface FavoriteButtonProps {
@@ -18,6 +19,7 @@ export default function FavoriteButton({
 }: FavoriteButtonProps) {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const { success, error, warning } = useToast();
   const [isFavorite, setIsFavorite] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -53,7 +55,7 @@ export default function FavoriteButton({
 
   const handleToggleFavorite = async () => {
     if (!isAuthenticated) {
-      alert('Veuillez vous connecter pour ajouter aux favoris');
+      warning('Veuillez vous connecter pour ajouter aux favoris');
       router.push('/login');
       return;
     }
@@ -74,9 +76,10 @@ export default function FavoriteButton({
 
         if (res.ok) {
           setIsFavorite(false);
+          success('Produit retiré des favoris');
         } else {
           const data = await res.json();
-          alert(data.message || 'Erreur lors de la suppression des favoris');
+          error(data.message || 'Erreur lors de la suppression des favoris');
         }
       } else {
         // Add to favorites
@@ -91,13 +94,14 @@ export default function FavoriteButton({
 
         if (res.ok) {
           setIsFavorite(true);
+          success('Produit ajouté aux favoris');
         } else {
           const data = await res.json();
-          alert(data.message || 'Erreur lors de l\'ajout aux favoris');
+          error(data.message || 'Erreur lors de l\'ajout aux favoris');
         }
       }
     } catch (err) {
-      alert('Erreur lors de la modification des favoris');
+      error('Erreur lors de la modification des favoris');
     } finally {
       setLoading(false);
     }

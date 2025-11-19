@@ -4,6 +4,8 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const category = searchParams.get('category');
   const search = searchParams.get('search');
+  const popular = searchParams.get('popular');
+  const recent = searchParams.get('recent');
 
   try {
     let url = `${process.env.PRODUCT_SERVICE_URL}/products`;

@@ -4,29 +4,31 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getToken } from '@/lib/auth';
+import { useToast } from '@/lib/toast';
 import { useCart } from '@/lib/use-cart';
 import CartSummary from '@/components/cart/CartSummary';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const { error: errorToast, warning, success: successToast } = useToast();
   const { cart, clearCart, getSummary } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!isAuthenticated) {
-      alert('Veuillez vous connecter pour passer une commande');
+      warning('Veuillez vous connecter pour passer une commande');
       router.push('/login');
       return;
     }
 
     if (cart.length === 0) {
-      alert('Votre panier est vide');
+      warning('Votre panier est vide');
       router.push('/cart');
       return;
     }
-  }, [isAuthenticated, cart.length, router]);
+  }, [isAuthenticated, cart.length, router, warning]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,10 +37,10 @@ export default function CheckoutPage() {
 
     try {
       const token = getToken();
+      // Envoyer seulement productId et quantity (le prix sera validé côté backend)
       const orderItems = cart.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
-        price: item.price,
       }));
 
       const res = await fetch('/api/orders', {
@@ -58,10 +60,11 @@ export default function CheckoutPage() {
       // Clear cart
       clearCart();
       
-      alert('Commande créée avec succès !');
+      successToast('Commande créée avec succès !');
       router.push('/orders');
     } catch (err: any) {
       setError(err.message);
+      errorToast(err.message);
     } finally {
       setLoading(false);
     }
@@ -120,6 +123,13 @@ export default function CheckoutPage() {
               Les informations de livraison seront configurées dans une version future.
               <br />
               Pour le moment, la commande sera enregistrée avec vos informations de compte.
+            </p>
+          </div>
+          
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mt-4">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Note:</strong> Les prix et la disponibilité seront vérifiés lors de la confirmation. 
+              Le montant final pourrait différer légèrement si les prix ont changé.
             </p>
           </div>
         </div>
