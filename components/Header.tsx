@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import CartButton from './cart/CartButton';
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuth();
@@ -14,24 +15,49 @@ export default function Header() {
     <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
+          {/* Logo et Navigation Principale */}
           <div className="flex items-center space-x-6">
             <Link href="/" className="text-xl font-bold hover:text-blue-100 transition-colors">
               DevOps MicroService App
             </Link>
-            {isAuthenticated && (
+            
+            {/* Navigation Links */}
+            <nav className="hidden md:flex items-center space-x-4">
               <Link
-                href="/orders"
+                href="/products"
                 className="hover:text-blue-100 transition-colors font-medium"
               >
-                Commandes
+                Produits
               </Link>
-            )}
+              {isAuthenticated && (
+                <>
+                  <Link
+                    href="/favorites"
+                    className="hover:text-blue-100 transition-colors font-medium"
+                  >
+                    Favoris
+                  </Link>
+                  <Link
+                    href="/orders"
+                    className="hover:text-blue-100 transition-colors font-medium"
+                  >
+                    Commandes
+                  </Link>
+                </>
+              )}
+            </nav>
           </div>
+
+          {/* Actions */}
           <nav className="flex items-center space-x-4">
+            {/* Cart Button */}
+            <CartButton />
+
+            {/* Auth Section */}
             {isAuthenticated ? (
               <>
-                <span className="text-sm text-blue-50">
-                  Connecté en tant que: <strong className="font-semibold">{user?.email}</strong>
+                <span className="hidden lg:block text-sm text-blue-50">
+                  <strong className="font-semibold">{user?.email}</strong>
                 </span>
                 <button
                   onClick={handleLogout}
