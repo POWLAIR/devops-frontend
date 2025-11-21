@@ -26,11 +26,15 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeout: numb
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    
+    // Extraire le tenant_id depuis les headers ou utiliser "default"
+    const tenantId = request.headers.get('x-tenant-id') || 'default';
 
     const response = await fetchWithTimeout(`${AUTH_SERVICE_URL}/auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Tenant-ID': tenantId,
       },
       body: JSON.stringify(body),
     });

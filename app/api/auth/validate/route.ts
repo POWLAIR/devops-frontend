@@ -35,11 +35,15 @@ export async function GET(request: Request) {
     }
 
     const token = authHeader.substring(7);
+    
+    // Extraire le tenant_id depuis les headers ou utiliser "default"
+    const tenantId = request.headers.get('x-tenant-id') || 'default';
 
     const response = await fetchWithTimeout(`${AUTH_SERVICE_URL}/auth/validate`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
+        'X-Tenant-ID': tenantId,
       },
     });
 
