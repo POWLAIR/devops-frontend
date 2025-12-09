@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Copier les fichiers de dépendances
 COPY package*.json ./
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 # Stage 2: Build
 FROM node:20-alpine AS builder

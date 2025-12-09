@@ -40,7 +40,15 @@ export default function SearchAutocomplete({ query, onSelect }: SearchAutocomple
         const res = await fetch(`/api/products/search?q=${encodeURIComponent(query)}`);
         if (res.ok) {
           const data = await res.json();
-          setSuggestions(Array.isArray(data) ? data.slice(0, 5) : []);
+          // Normaliser les valeurs decimal (convertir strings en nombres)
+          const normalized = Array.isArray(data)
+            ? data.map((product: any) => ({
+                ...product,
+                price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
+                rating: typeof product.rating === 'string' ? parseFloat(product.rating) : product.rating,
+              }))
+            : [];
+          setSuggestions(normalized.slice(0, 5));
           setIsOpen(true);
           setSelectedIndex(-1);
         }

@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import ProductGrid from '@/components/products/ProductGrid';
 import ProductFilters, { SortOption } from '@/components/products/ProductFilters';
-import Skeleton from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { getToken } from '@/lib/auth';
 
 interface Product {
   id: string;
@@ -18,17 +20,20 @@ interface Product {
   createdAt?: string;
 }
 
-export default function ProductsPage() {
+function ProductsContent() {
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('default');
   const [minPrice, setMinPrice] = useState(0);
   const [maxPrice, setMaxPrice] = useState(1000);
   const [inStockOnly, setInStockOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Get search query from URL
+  const searchQuery = searchParams.get('search') || '';
 
   // Calculate max price from products
   useEffect(() => {
@@ -48,7 +53,12 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/products');
+      const token = getToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch('/api/products', { headers });
       if (!res.ok) throw new Error('Erreur lors du chargement des produits');
       const data = await res.json();
       setProducts(data);
@@ -125,25 +135,23 @@ export default function ProductsPage() {
     return filtered;
   }, [products, selectedCategory, searchQuery, sortOption, minPrice, maxPrice, inStockOnly]);
 
-  const handleCategoryChange = (category: string | null) => {
-    setSelectedCategory(category);
-    setSearchQuery('');
-  };
-
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
-    setSelectedCategory(null);
-  };
+  // Get category from URL
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
+  }, [searchParams]);
 
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <Skeleton className="h-10 w-64 mb-2" variant="text" />
-          <Skeleton className="h-4 w-96" variant="text" />
+          <Skeleton className="h-10 w-64 mb-2" />
+          <Skeleton className="h-4 w-96" />
         </div>
         <div className="mb-6">
-          <Skeleton className="h-32 w-full rounded-xl" variant="rectangular" />
+          <Skeleton className="h-32 w-full rounded-xl" />
         </div>
         <ProductGrid products={[]} loading={true} />
       </div>
@@ -161,22 +169,22 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
           Catalogue Produits
         </h1>
-        <p className="text-slate-600 dark:text-slate-400">
-          Découvrez notre sélection de produits
-        </p>
+        {searchQuery && (
+          <p className="text-slate-600 dark:text-slate-400">
+            Résultats pour &quot;{searchQuery}&quot;
+          </p>
+        )}
       </div>
 
       <ProductFilters
         categories={categories}
         selectedCategory={selectedCategory}
-        onCategoryChange={handleCategoryChange}
-        searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
+        onCategoryChange={setSelectedCategory}
         sortOption={sortOption}
         onSortChange={setSortOption}
         minPrice={minPrice}
@@ -189,12 +197,43 @@ export default function ProductsPage() {
         onInStockOnlyChange={setInStockOnly}
       />
 
-      <div className="mb-4 text-sm text-slate-600 dark:text-slate-400">
-        {filteredAndSortedProducts.length} produit{filteredAndSortedProducts.length > 1 ? 's' : ''} trouvé{filteredAndSortedProducts.length > 1 ? 's' : ''}
-      </div>
-
-      <ProductGrid products={filteredAndSortedProducts} />
+      {filteredAndSortedProducts.length > 0 ? (
+        <>
+          <div className="mb-4 text-sm text-slate-600 dark:text-slate-400">
+            {filteredAndSortedProducts.length} produit{filteredAndSortedProducts.length > 1 ? 's' : ''} trouvé{filteredAndSortedProducts.length > 1 ? 's' : ''}
+          </div>
+          <ProductGrid products={filteredAndSortedProducts} />
+        </>
+      ) : (
+        <div className="mb-8 text-center py-12">
+          <p className="text-slate-500 dark:text-slate-400 text-lg mb-2">Aucun produit trouvé</p>
+          <p className="text-slate-400 dark:text-slate-500 text-sm">
+            Essayez de modifier vos filtres ou votre recherche
+          </p>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <Skeleton className="h-10 w-64 mb-2" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <div className="mb-6">
+            <Skeleton className="h-32 w-full rounded-xl" />
+          </div>
+          <ProductGrid products={[]} loading={true} />
+        </div>
+      }
+    >
+      <ProductsContent />
+    </Suspense>
   );
 }
 

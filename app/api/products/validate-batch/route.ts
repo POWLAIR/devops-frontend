@@ -1,39 +1,28 @@
 import { NextResponse } from 'next/server';
+import { fetchWithTimeout, TIMEOUT_MS } from '@/lib/fetch-with-timeout';
 
-const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || 'http://localhost:4000';
-const TIMEOUT_MS = 10000; // 10 secondes
-
-async function fetchWithTimeout(url: string, options: RequestInit, timeout: number = TIMEOUT_MS): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Timeout: Le service de produits ne répond pas');
-    }
-    throw error;
-  }
-}
+const PRODUCT_SERVICE_URL =
+  process.env.PRODUCT_SERVICE_URL || 'http://localhost:4000';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    // Extraire le tenant_id depuis les headers ou utiliser le tenant par défaut
+    const tenantId = request.headers.get('x-tenant-id') || '1574b85d-a3df-400f-9e82-98831aa32934';
 
-    const response = await fetchWithTimeout(`${PRODUCT_SERVICE_URL}/products/validate-batch`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await fetchWithTimeout(
+      `${PRODUCT_SERVICE_URL}/products/validate-batch`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Tenant-ID': tenantId,
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+      TIMEOUT_MS,
+      'Timeout: Le service de produits ne répond pas',
+    );
 
     const data = await response.json();
 

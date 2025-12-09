@@ -1,7 +1,7 @@
 'use client';
 
 import ProductCard from './ProductCard';
-import Skeleton from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface Product {
   id: string;
@@ -27,10 +27,10 @@ export default function ProductGrid({ products, loading }: ProductGridProps) {
             key={i}
             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4"
           >
-            <Skeleton className="w-full h-48 mb-4" variant="rectangular" />
-            <Skeleton className="h-4 w-3/4 mb-2" variant="text" />
-            <Skeleton className="h-6 w-1/2 mb-2" variant="text" />
-            <Skeleton className="h-4 w-2/3" variant="text" />
+            <Skeleton className="w-full h-48 mb-4" />
+            <Skeleton className="h-4 w-3/4 mb-2" />
+            <Skeleton className="h-6 w-1/2 mb-2" />
+            <Skeleton className="h-4 w-2/3" />
           </div>
         ))}
       </div>

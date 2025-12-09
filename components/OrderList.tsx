@@ -9,9 +9,12 @@ interface OrderListProps {
   onEdit?: (order: Order) => void;
   onDelete?: (orderId: string) => void;
   refreshTrigger?: number;
+  userRole?: string;
 }
 
-export default function OrderList({ onEdit, onDelete, refreshTrigger }: OrderListProps) {
+export default function OrderList({ onEdit, onDelete, refreshTrigger, userRole }: OrderListProps) {
+  const isCustomer = userRole === 'customer';
+  const canManageOrders = !isCustomer; // Merchants et admins peuvent gérer
   const { error: errorToast, success } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,7 +84,6 @@ export default function OrderList({ onEdit, onDelete, refreshTrigger }: OrderLis
 
   return (
     <div className="space-y-4">
-      <h2 className="text-3xl font-bold mb-6 text-slate-800 dark:text-slate-100">Mes commandes</h2>
       <div className="grid gap-4">
         {orders.map((order) => (
           <div
@@ -114,22 +116,24 @@ export default function OrderList({ onEdit, onDelete, refreshTrigger }: OrderLis
                 {order.items.length} article(s) - Total: <span className="font-semibold text-blue-600 dark:text-blue-400">{order.total.toFixed(2)} €</span>
               </p>
             </div>
-            <div className="flex gap-3 mt-4">
-              {onEdit && (
+            {canManageOrders && (
+              <div className="flex gap-3 mt-4">
+                {onEdit && (
+                  <button
+                    onClick={() => onEdit(order)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm hover:shadow-md"
+                  >
+                    Modifier
+                  </button>
+                )}
                 <button
-                  onClick={() => onEdit(order)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm hover:shadow-md"
+                  onClick={() => handleDelete(order.id)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium shadow-sm hover:shadow-md"
                 >
-                  Modifier
+                  Supprimer
                 </button>
-              )}
-              <button
-                onClick={() => handleDelete(order.id)}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium shadow-sm hover:shadow-md"
-              >
-                Supprimer
-              </button>
-            </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

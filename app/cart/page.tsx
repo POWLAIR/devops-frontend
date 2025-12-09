@@ -29,7 +29,7 @@ export default function CartPage() {
         <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
           Mon Panier
         </h1>
-        
+
         <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-12 text-center">
           <p className="text-slate-600 dark:text-slate-400 mb-4">
             Votre panier est vide.

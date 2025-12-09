@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
+import toast from 'react-hot-toast';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -20,12 +21,16 @@ export default function LoginForm() {
 
     try {
       await login(email, password);
+      toast.success('Connexion réussie !');
       router.push('/orders');
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
+        toast.error(err.message);
       } else {
-        setError('Une erreur est survenue lors de la connexion');
+        const message = 'Une erreur est survenue lors de la connexion';
+        setError(message);
+        toast.error(message);
       }
     } finally {
       setIsLoading(false);

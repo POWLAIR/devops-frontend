@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ToastProvider } from "@/lib/toast";
-import Header from "@/components/Header";
+import TopBar from "@/components/layout/TopBar";
+import MainNavbar from "@/components/layout/MainNavbar";
 import ToastContainer from "@/components/ui/ToastContainer";
+import { Toaster } from "react-hot-toast";
+import NavigationProgress from "@/components/NavigationProgress";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,8 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DevOps MicroService App",
-  description: "Application microservices avec API Gateway Next.js",
+  title: "DevOps Shop - Votre marketplace multi-tenant",
+  description: "Application e-commerce microservices avec architecture multi-tenant",
 };
 
 export default function RootLayout({
@@ -29,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50`}
       >
         <a
           href="#main-content"
@@ -39,14 +43,36 @@ export default function RootLayout({
         </a>
         <AuthProvider>
           <ToastProvider>
-            <Header />
+            <Suspense fallback={null}>
+              <NavigationProgress />
+            </Suspense>
+            
+            {/* Double Navbar E-commerce */}
+            <TopBar />
+            <MainNavbar />
+            
             <main
               id="main-content"
-              className="container mx-auto px-4 py-8 min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-800"
+              className="min-h-screen"
+              role="main"
             >
               {children}
             </main>
+
+            {/* Footer Minimaliste */}
+            <footer className="bg-slate-900 text-white mt-16">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-400">
+                  <p>&copy; 2025 DevOps Shop. Tous droits réservés.</p>
+                  <a href="/help" className="hover:text-white transition-colors">
+                    Besoin d'aide ?
+                  </a>
+                </div>
+              </div>
+            </footer>
+
             <ToastContainer />
+            <Toaster position="top-right" />
           </ToastProvider>
         </AuthProvider>
       </body>

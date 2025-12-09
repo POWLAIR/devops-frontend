@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api-client';
+import toast from 'react-hot-toast';
 
 export default function RegisterForm() {
   const [email, setEmail] = useState('');
@@ -19,12 +20,16 @@ export default function RegisterForm() {
     setError('');
 
     if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas');
+      const message = 'Les mots de passe ne correspondent pas';
+      setError(message);
+      toast.error(message);
       return;
     }
 
     if (password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caractères');
+      const message = 'Le mot de passe doit contenir au moins 6 caractères';
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -32,12 +37,16 @@ export default function RegisterForm() {
 
     try {
       await register(email, password);
+      toast.success('Inscription réussie !');
       router.push('/orders');
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
+        toast.error(err.message);
       } else {
-        setError('Une erreur est survenue lors de l\'inscription');
+        const message = 'Une erreur est survenue lors de l\'inscription';
+        setError(message);
+        toast.error(message);
       }
     } finally {
       setIsLoading(false);

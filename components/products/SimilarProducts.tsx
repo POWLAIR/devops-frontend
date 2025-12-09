@@ -39,9 +39,14 @@ export default function SimilarProducts({ productId, category, limit = 6 }: Simi
       
       const data = await res.json();
       
-      // Filter out current product and limit results
+      // Normaliser les valeurs decimal (convertir strings en nombres) et filtrer
       const filtered = Array.isArray(data)
         ? data
+            .map((product: any) => ({
+              ...product,
+              price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
+              rating: typeof product.rating === 'string' ? parseFloat(product.rating) : product.rating,
+            }))
             .filter((p: Product) => p.id !== productId)
             .slice(0, limit)
         : [];

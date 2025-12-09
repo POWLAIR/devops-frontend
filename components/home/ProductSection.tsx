@@ -39,6 +39,13 @@ export default function ProductSection({ title, apiUrl, limit = 8 }: ProductSect
       let data = await res.json();
       
       if (Array.isArray(data)) {
+        // Normaliser les valeurs decimal (convertir strings en nombres)
+        data = data.map((product: any) => ({
+          ...product,
+          price: typeof product.price === 'string' ? parseFloat(product.price) : product.price,
+          rating: typeof product.rating === 'string' ? parseFloat(product.rating) : product.rating,
+        }));
+        
         // Sort by popularity (rating * reviewCount) or newest if needed
         if (apiUrl.includes('popular')) {
           data = data.sort((a: Product, b: Product) => {

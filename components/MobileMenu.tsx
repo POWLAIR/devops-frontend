@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
+import TenantSelector from './TenantSelector';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -114,6 +115,9 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 
           {/* User Section */}
           <div className="border-t border-slate-200 dark:border-slate-700 p-4 space-y-2">
+            <div className="px-4 py-2">
+              <TenantSelector />
+            </div>
             {isAuthenticated ? (
               <>
                 <div className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400">

@@ -9,6 +9,22 @@ export interface ApiError {
 export interface User {
   id: string;
   email: string;
+  full_name?: string;
+  tenant_id: string;
+  role: string;
+  is_active: boolean;
+  email_verified: boolean;
+  created_at: string;
+}
+
+export interface UserUpdateRequest {
+  full_name?: string;
+  email?: string;
+}
+
+export interface PasswordUpdateRequest {
+  current_password: string;
+  new_password: string;
 }
 
 export interface LoginRequest {
@@ -31,6 +47,11 @@ export interface ValidateResponse {
   user?: User;
 }
 
+export interface Tenant {
+  id: string;
+  name: string;
+}
+
 // Types pour les commandes
 export interface Order {
   id: string;
@@ -49,7 +70,7 @@ export interface OrderItem {
   price: number;
 }
 
-export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'cancelled';
+export type OrderStatus = "pending" | "confirmed" | "shipped" | "cancelled";
 
 export interface CreateOrderRequest {
   items: Array<{
@@ -68,4 +89,3 @@ export interface UpdateOrderRequest {
   }>;
   status?: OrderStatus;
 }
-

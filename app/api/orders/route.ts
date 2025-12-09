@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { fetchWithTimeout, TIMEOUT_MS } from '@/lib/fetch-with-timeout';
 
-const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3000';
-const TIMEOUT_MS = 10000; // 10 secondes
+const ORDER_SERVICE_URL =
+  process.env.ORDER_SERVICE_URL || 'http://localhost:3000';
 
 // Transformer les données du backend (productId) vers le frontend (name)
 function transformOrderFromBackend(order: any) {
@@ -31,27 +32,7 @@ function transformOrderFromBackend(order: any) {
   };
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeout: number = TIMEOUT_MS): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Timeout: Le service de commandes ne répond pas');
-    }
-    throw error;
-  }
-}
-
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
 
@@ -63,14 +44,26 @@ export async function GET(request: Request) {
     }
 
     const token = authHeader.substring(7);
+    // Extraire le tenant_id depuis les headers ou cookies ou utiliser le tenant par défaut
+    const defaultTenant = '1574b85d-a3df-400f-9e82-98831aa32934';
+    const tenantId =
+      request.headers.get('x-tenant-id') ||
+      request.cookies.get('x-tenant-id')?.value ||
+      defaultTenant;
 
-    const response = await fetchWithTimeout(`${ORDER_SERVICE_URL}/orders`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+    const response = await fetchWithTimeout(
+      `${ORDER_SERVICE_URL}/orders`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-Tenant-ID': tenantId,
+        },
       },
-    });
+      TIMEOUT_MS,
+      'Timeout: Le service de commandes ne répond pas',
+    );
 
     const data = await response.json();
 
@@ -97,7 +90,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
 
@@ -110,15 +103,27 @@ export async function POST(request: Request) {
 
     const token = authHeader.substring(7);
     const body = await request.json();
+    // Extraire le tenant_id depuis les headers ou utiliser le tenant par défaut
+    const defaultTenant = '1574b85d-a3df-400f-9e82-98831aa32934';
+    const tenantId =
+      request.headers.get('x-tenant-id') ||
+      request.cookies.get('x-tenant-id')?.value ||
+      defaultTenant;
 
-    const response = await fetchWithTimeout(`${ORDER_SERVICE_URL}/orders`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+    const response = await fetchWithTimeout(
+      `${ORDER_SERVICE_URL}/orders`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-Tenant-ID': tenantId,
+        },
+        body: JSON.stringify(body),
       },
-      body: JSON.stringify(body),
-    });
+      TIMEOUT_MS,
+      'Timeout: Le service de commandes ne répond pas',
+    );
 
     const data = await response.json();
 

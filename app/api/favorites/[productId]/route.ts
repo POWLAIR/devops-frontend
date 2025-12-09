@@ -15,6 +15,12 @@ export async function DELETE(
 
   try {
     const { productId } = await params;
+    // Extraire le tenant_id depuis les headers ou cookies ou utiliser le tenant par défaut
+    const defaultTenant = '1574b85d-a3df-400f-9e82-98831aa32934';
+    const tenantId =
+      request.headers.get('x-tenant-id') ||
+      request.cookies.get('x-tenant-id')?.value ||
+      defaultTenant;
 
     const response = await fetch(
       `${process.env.PRODUCT_SERVICE_URL}/products/${productId}/favorite`,
@@ -22,6 +28,7 @@ export async function DELETE(
         method: 'DELETE',
         headers: {
           'Authorization': token,
+          'X-Tenant-ID': tenantId,
         },
       }
     );
