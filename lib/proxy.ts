@@ -1,4 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import http from 'http';
+import https from 'https';
 import { AUTH_COOKIE, TENANT_COOKIE, REQUEST_TIMEOUT_MS } from './constants';
 
 interface ProxyOptions {
@@ -10,6 +12,52 @@ interface ProxyOptions {
   body?: BodyInit | null;
   /** Headers supplémentaires à ajouter */
   extraHeaders?: Record<string, string>;
+}
+
+/**
+ * Effectue une requête HTTP via les modules http/https natifs de Node.js.
+ * Contourne la liste de ports bloqués dans undici/fetch (ex. port 6000 = X11).
+ */
+function httpRequest(
+  url: string,
+  method: string,
+  headers: Record<string, string>,
+  body?: string | null,
+): Promise<{ status: number; headers: Record<string, string>; body: string }> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const isHttps = parsed.protocol === 'https:';
+    const lib = isHttps ? https : http;
+
+    const options: http.RequestOptions = {
+      hostname: parsed.hostname,
+      port: parsed.port || (isHttps ? 443 : 80),
+      path: parsed.pathname + parsed.search,
+      method,
+      headers,
+    };
+
+    const req = lib.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        const responseHeaders: Record<string, string> = {};
+        Object.entries(res.headers).forEach(([k, v]) => {
+          if (typeof v === 'string') responseHeaders[k] = v;
+          else if (Array.isArray(v)) responseHeaders[k] = v.join(', ');
+        });
+        resolve({ status: res.statusCode ?? 500, headers: responseHeaders, body: data });
+      });
+    });
+
+    req.on('error', reject);
+    req.setTimeout(REQUEST_TIMEOUT_MS, () => {
+      req.destroy(new Error('timeout'));
+    });
+
+    if (body) req.write(body);
+    req.end();
+  });
 }
 
 /**
@@ -32,7 +80,7 @@ export async function proxyRequest(
   const tenantFromHeader = request.headers.get('x-tenant-id');
   const tenantId = tenantFromHeader ?? tenantFromCookie;
 
-  // Construction des headers à forwarder
+  // Construction des headers
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...extraHeaders,
@@ -40,10 +88,15 @@ export async function proxyRequest(
   if (authHeader) headers['Authorization'] = authHeader;
   if (tenantId) headers['X-Tenant-ID'] = tenantId;
 
-  // Détermination du body à envoyer
+  // Détermination du body
   const requestMethod = method ?? request.method;
-  let requestBody: BodyInit | null | undefined = body;
-  if (requestBody === undefined && !['GET', 'HEAD'].includes(requestMethod)) {
+  let requestBody: string | null = null;
+
+  if (body === null) {
+    requestBody = null;
+  } else if (typeof body === 'string') {
+    requestBody = body;
+  } else if (!['GET', 'HEAD'].includes(requestMethod)) {
     try {
       const text = await request.text();
       requestBody = text || null;
@@ -52,36 +105,28 @@ export async function proxyRequest(
     }
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
   try {
-    const response = await fetch(targetUrl, {
-      method: requestMethod,
-      headers,
-      body: requestBody ?? undefined,
-      signal: controller.signal,
-    });
+    const result = await httpRequest(targetUrl, requestMethod, headers, requestBody);
 
-    // Lire le body de réponse
-    const contentType = response.headers.get('content-type') ?? '';
-    let data: unknown;
+    const contentType = result.headers['content-type'] ?? '';
     if (contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      data = await response.text();
+      try {
+        const json: unknown = JSON.parse(result.body);
+        return NextResponse.json(json, { status: result.status });
+      } catch {
+        return new NextResponse(result.body, {
+          status: result.status,
+          headers: { 'Content-Type': contentType },
+        });
+      }
     }
 
-    if (typeof data === 'string') {
-      return new NextResponse(data, {
-        status: response.status,
-        headers: { 'Content-Type': contentType },
-      });
-    }
-
-    return NextResponse.json(data, { status: response.status });
+    return new NextResponse(result.body, {
+      status: result.status,
+      headers: { 'Content-Type': contentType || 'text/plain' },
+    });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (error instanceof Error && error.message === 'timeout') {
       return NextResponse.json(
         { message: 'La requête a expiré. Veuillez réessayer.' },
         { status: 504 },
@@ -89,8 +134,6 @@ export async function proxyRequest(
     }
     const message = error instanceof Error ? error.message : 'Erreur de connexion au service';
     return NextResponse.json({ message }, { status: 502 });
-  } finally {
-    clearTimeout(timeoutId);
   }
 }
 
