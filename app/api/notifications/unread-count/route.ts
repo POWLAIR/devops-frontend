@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const NOTIFICATION_SERVICE_URL =
-  process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:8002';
+  process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:6000';
 
 export async function GET(request: NextRequest) {
   try {
