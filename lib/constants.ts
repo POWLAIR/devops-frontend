@@ -81,3 +81,7 @@ export const PLATFORM_COMMISSION_RATE = 0.05;
 
 // Pagination par défaut
 export const DEFAULT_PAGE_SIZE = 20;
+
+// Tenant par défaut pour les requêtes non authentifiées (login, register)
+// Doit être fourni via DEFAULT_TENANT_ID dans .env.local ou les variables d'environnement
+export const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID;
