@@ -1,74 +1,56 @@
 import type { User } from './types';
-
-const TOKEN_KEY = 'auth_token';
-const USER_KEY = 'auth_user';
+import { TOKEN_STORAGE_KEY, USER_STORAGE_KEY, AUTH_COOKIE, TENANT_COOKIE } from './constants';
 
 /**
- * Stocke le token d'authentification dans localStorage
+ * Sauvegarde le token JWT et l'utilisateur dans localStorage et dans les cookies.
  */
-export function setToken(token: string): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(TOKEN_KEY, token);
+export function saveSession(token: string, user: User): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(TOKEN_STORAGE_KEY, token);
+  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  // Cookies accessibles par les Server Components (httpOnly=false pour lecture JS)
+  const maxAge = 60 * 60 * 24 * 7; // 7 jours
+  document.cookie = `${AUTH_COOKIE}=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  document.cookie = `${TENANT_COOKIE}=${user.tenant_id}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+/**
+ * Retourne la session courante depuis localStorage, ou null si absente.
+ */
+export function getSession(): { token: string; user: User } | null {
+  if (typeof window === 'undefined') return null;
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  const userStr = localStorage.getItem(USER_STORAGE_KEY);
+  if (!token || !userStr) return null;
+  try {
+    const user = JSON.parse(userStr) as User;
+    return { token, user };
+  } catch {
+    return null;
   }
 }
 
 /**
- * Récupère le token d'authentification depuis localStorage
+ * Supprime la session (localStorage + cookies).
+ */
+export function clearSession(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem(USER_STORAGE_KEY);
+  document.cookie = `${AUTH_COOKIE}=; path=/; max-age=0`;
+  document.cookie = `${TENANT_COOKIE}=; path=/; max-age=0`;
+}
+
+/**
+ * Retourne le JWT courant ou null.
  */
 export function getToken(): string | null {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem(TOKEN_KEY);
-  }
-  return null;
+  return getSession()?.token ?? null;
 }
 
 /**
- * Supprime le token d'authentification
+ * Retourne le tenant_id de l'utilisateur connecté ou null.
  */
-export function removeToken(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-  }
+export function getTenantId(): string | null {
+  return getSession()?.user?.tenant_id ?? null;
 }
-
-/**
- * Stocke les informations de l'utilisateur dans localStorage
- */
-export function setUser(user: User): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-  }
-}
-
-/**
- * Récupère les informations de l'utilisateur depuis localStorage
- */
-export function getUser(): User | null {
-  if (typeof window !== 'undefined') {
-    const userStr = localStorage.getItem(USER_KEY);
-    if (userStr) {
-      try {
-        return JSON.parse(userStr) as User;
-      } catch {
-        return null;
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * Vérifie si un token est présent
- */
-export function hasToken(): boolean {
-  return getToken() !== null;
-}
-
-/**
- * Vérifie si l'utilisateur est authentifié
- */
-export function isAuthenticated(): boolean {
-  return hasToken() && getUser() !== null;
-}
-

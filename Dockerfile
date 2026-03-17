@@ -42,4 +42,3 @@ EXPOSE 3001
 
 # Commande de démarrage
 CMD ["node", "server.js"]
-

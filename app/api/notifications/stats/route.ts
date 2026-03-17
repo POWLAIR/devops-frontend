@@ -1,10 +1,10 @@
 import { type NextRequest } from 'next/server';
 import { proxyRequest } from '@/lib/proxy';
-import { AUTH_SERVICE_URL } from '@/lib/constants';
+import { NOTIFICATION_SERVICE_URL } from '@/lib/constants';
 
 export async function GET(request: NextRequest) {
   return proxyRequest(request, {
-    targetUrl: `${AUTH_SERVICE_URL}/tenants`,
+    targetUrl: `${NOTIFICATION_SERVICE_URL}/api/v1/notifications/stats`,
     body: null,
   });
 }

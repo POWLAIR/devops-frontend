@@ -3,12 +3,6 @@ import { proxyRequest, buildUrl } from '@/lib/proxy';
 import { PRODUCT_SERVICE_URL } from '@/lib/constants';
 
 export async function GET(request: NextRequest) {
-  const targetUrl = buildUrl(`${PRODUCT_SERVICE_URL}/products`, request);
+  const targetUrl = buildUrl(`${PRODUCT_SERVICE_URL}/products/search`, request);
   return proxyRequest(request, { targetUrl, body: null });
-}
-
-export async function POST(request: NextRequest) {
-  return proxyRequest(request, {
-    targetUrl: `${PRODUCT_SERVICE_URL}/products`,
-  });
 }

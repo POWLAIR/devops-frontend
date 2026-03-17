@@ -1,51 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest } from 'next/server';
+import { proxyRequest } from '@/lib/proxy';
+import { PRODUCT_SERVICE_URL } from '@/lib/constants';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    // Extraire le tenant_id depuis les headers/cookies ou utiliser le tenant par défaut
-    const defaultTenant = "1574b85d-a3df-400f-9e82-98831aa32934";
-    const tenantId =
-      request.headers.get("x-tenant-id") ||
-      request.cookies.get("x-tenant-id")?.value ||
-      defaultTenant;
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return proxyRequest(request, {
+    targetUrl: `${PRODUCT_SERVICE_URL}/products/${id}`,
+    body: null,
+  });
+}
 
-    const response = await fetch(
-      `${process.env.PRODUCT_SERVICE_URL}/products/${id}`,
-      {
-        headers: {
-          "X-Tenant-ID": tenantId,
-        },
-      }
-    );
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return proxyRequest(request, {
+    targetUrl: `${PRODUCT_SERVICE_URL}/products/${id}`,
+  });
+}
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: "Product not found" },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-
-    // Convertir les valeurs decimal de PostgreSQL (strings) en nombres
-    const normalizedData = {
-      ...data,
-      price:
-        typeof data.price === "string" ? parseFloat(data.price) : data.price,
-      rating:
-        typeof data.rating === "string" ? parseFloat(data.rating) : data.rating,
-    };
-
-    return NextResponse.json(normalizedData);
-  } catch (error) {
-    console.error("Error fetching product:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
-  }
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return proxyRequest(request, {
+    targetUrl: `${PRODUCT_SERVICE_URL}/products/${id}`,
+    body: null,
+  });
 }

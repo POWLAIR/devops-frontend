@@ -1,18 +1,18 @@
 import { type NextRequest } from 'next/server';
 import { proxyRequest } from '@/lib/proxy';
-import { PRODUCT_SERVICE_URL } from '@/lib/constants';
+import { AUTH_SERVICE_URL } from '@/lib/constants';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return proxyRequest(request, {
-    targetUrl: `${PRODUCT_SERVICE_URL}/products/${id}/reviews`,
+    targetUrl: `${AUTH_SERVICE_URL}/tenants/${id}`,
     body: null,
   });
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return proxyRequest(request, {
-    targetUrl: `${PRODUCT_SERVICE_URL}/products/${id}/review`,
+    targetUrl: `${AUTH_SERVICE_URL}/tenants/${id}`,
   });
 }

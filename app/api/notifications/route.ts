@@ -1,8 +1,8 @@
 import { type NextRequest } from 'next/server';
 import { proxyRequest, buildUrl } from '@/lib/proxy';
-import { PAYMENT_SERVICE_URL } from '@/lib/constants';
+import { NOTIFICATION_SERVICE_URL } from '@/lib/constants';
 
 export async function GET(request: NextRequest) {
-  const targetUrl = buildUrl(`${PAYMENT_SERVICE_URL}/api/v1/payments`, request);
+  const targetUrl = buildUrl(`${NOTIFICATION_SERVICE_URL}/api/v1/notifications/history`, request);
   return proxyRequest(request, { targetUrl, body: null });
 }

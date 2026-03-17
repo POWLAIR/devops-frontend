@@ -1,26 +1,18 @@
 import { type NextRequest } from 'next/server';
 import { proxyRequest } from '@/lib/proxy';
-import { ORDER_SERVICE_URL } from '@/lib/constants';
-
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  return proxyRequest(request, {
-    targetUrl: `${ORDER_SERVICE_URL}/orders/${id}`,
-    body: null,
-  });
-}
+import { PRODUCT_SERVICE_URL } from '@/lib/constants';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return proxyRequest(request, {
-    targetUrl: `${ORDER_SERVICE_URL}/orders/${id}`,
+    targetUrl: `${PRODUCT_SERVICE_URL}/reviews/${id}`,
   });
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return proxyRequest(request, {
-    targetUrl: `${ORDER_SERVICE_URL}/orders/${id}`,
+    targetUrl: `${PRODUCT_SERVICE_URL}/reviews/${id}`,
     body: null,
   });
 }
