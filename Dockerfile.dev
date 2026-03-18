@@ -1,0 +1,16 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache curl
+
+# Installer toutes les dépendances
+# Le code source est monté via volume dans docker-compose.dev.yml
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
+
+EXPOSE 3001
+
+# next dev active le Hot Module Replacement (HMR) nativement
+# La variable PORT=3001 est injectée par docker-compose.dev.yml
+CMD ["npm", "run", "dev"]
