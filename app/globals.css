@@ -98,15 +98,44 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-    --card-background: #1e293b;
-    --border-color: #334155;
-    --primary-light: #1e3a5f;
-    --secondary-light: #2d1b69;
-    --success-light: #064e3b;
-    --warning-light: #451a03;
-    --error-light: #450a0a;
+    /* Fonds */
+    --background: #0d1526;
+    --foreground: #e8edf5;
+    --card-background: #162035;
+    --border-color: #253450;
+
+    /* Neutrals — hiérarchie claire entre fond, header tableau et hover */
+    --neutral-50:  #1c2d45;   /* header tableau, fond doux */
+    --neutral-100: #243556;   /* hover ligne — perceptible sans éblouir */
+    --neutral-200: #2d3f63;   /* séparateurs visibles */
+    --neutral-300: #3a4f78;   /* icônes de tri, accents */
+    --neutral-400: #7a90b4;
+    --neutral-500: #8fa6c8;
+    --neutral-600: #aabdd9;
+    --neutral-700: #c4d3e8;
+    --neutral-800: #dde5f2;
+    --neutral-900: #f0f4fb;
+
+    /* Couleurs sémantiques — teintes plus lumineuses en dark */
+    --primary:           #5b9ef6;
+    --primary-hover:     #3b82f6;
+    --primary-light:     #0f2d5c;
+
+    --secondary:         #a78bfa;
+    --secondary-hover:   #8b5cf6;
+    --secondary-light:   #1e1354;
+
+    --success:           #34d399;
+    --success-hover:     #10b981;
+    --success-light:     #052e20;
+
+    --warning:           #fbbf24;
+    --warning-hover:     #f59e0b;
+    --warning-light:     #2d1f00;
+
+    --error:             #f87171;
+    --error-hover:       #ef4444;
+    --error-light:       #2d0909;
   }
 }
 

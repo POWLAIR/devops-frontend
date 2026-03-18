@@ -5,12 +5,10 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Building2,
-  Users,
   CreditCard,
   Bell,
   Package,
   ShoppingBag,
-  Layers,
   Wallet,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -25,15 +23,15 @@ interface NavItem {
 
 const ADMIN_NAV: NavItem[] = [
   { href: '/dashboard', label: 'Tableau de bord', icon: <LayoutDashboard size={18} /> },
-  { href: '/tenants', label: 'Tenants', icon: <Building2 size={18} /> },
-  { href: '/users', label: 'Utilisateurs', icon: <Users size={18} /> },
-  { href: '/plans', label: 'Plans', icon: <Layers size={18} /> },
+  { href: '/admin/tenants', label: 'Tenants', icon: <Building2 size={18} /> },
+  { href: '/orders', label: 'Toutes les commandes', icon: <ShoppingBag size={18} /> },
   { href: '/payments', label: 'Paiements', icon: <CreditCard size={18} /> },
   { href: '/notifications', label: 'Notifications', icon: <Bell size={18} /> },
 ];
 
 const MERCHANT_NAV: NavItem[] = [
-  { href: '/my-products', label: 'Mes produits', icon: <Package size={18} /> },
+  { href: '/dashboard', label: 'Tableau de bord', icon: <LayoutDashboard size={18} /> },
+  { href: '/products/manage', label: 'Mes produits', icon: <Package size={18} /> },
   { href: '/orders', label: 'Commandes', icon: <ShoppingBag size={18} /> },
   { href: '/payments', label: 'Paiements reçus', icon: <Wallet size={18} /> },
 ];
@@ -73,7 +71,7 @@ export function Sidebar() {
   let navItems: NavItem[] = [];
   if (user.role === USER_ROLES.PLATFORM_ADMIN) {
     navItems = ADMIN_NAV;
-  } else if (user.role === USER_ROLES.MERCHANT) {
+  } else if (user.role === USER_ROLES.MERCHANT_OWNER || user.role === USER_ROLES.MERCHANT_STAFF) {
     navItems = MERCHANT_NAV;
   } else {
     return null;

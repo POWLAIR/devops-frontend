@@ -21,7 +21,8 @@ export const TENANT_COOKIE = 'x-tenant-id';
 // Rôles utilisateurs
 export const USER_ROLES = {
   PLATFORM_ADMIN: 'platform_admin',
-  MERCHANT: 'merchant',
+  MERCHANT_OWNER: 'merchant_owner',
+  MERCHANT_STAFF: 'merchant_staff',
   CUSTOMER: 'customer',
 } as const;
 

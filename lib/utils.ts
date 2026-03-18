@@ -18,7 +18,8 @@ export function formatPrice(amount: number, currency = 'EUR'): string {
   }).format(amount);
 }
 
-export function formatDate(dateStr: string | Date, options?: Intl.DateTimeFormatOptions): string {
+export function formatDate(dateStr: string | Date | undefined | null, options?: Intl.DateTimeFormatOptions): string {
+  if (!dateStr) return '—';
   const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
   if (isNaN(date.getTime())) return '—';
   return new Intl.DateTimeFormat('fr-FR', {
@@ -162,7 +163,8 @@ export function truncate(str: string, maxLength: number): string {
   return str.slice(0, maxLength - 1) + '…';
 }
 
-export function truncateId(id: string, length = 8): string {
+export function truncateId(id: string | undefined | null, length = 8): string {
+  if (!id) return '—';
   return id.slice(0, length) + '…';
 }
 

@@ -13,11 +13,16 @@ export interface CartItem {
   imageUrl?: string;
 }
 
+export interface AddItemResult {
+  success: boolean;
+  error?: string;
+}
+
 interface CartContextType {
   items: CartItem[];
   itemCount: number;
   total: number;
-  addItem: (product: Product, quantity?: number) => void;
+  addItem: (product: Product, quantity?: number) => Promise<AddItemResult>;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -59,7 +64,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addItem = useCallback(
-    (product: Product, quantity = 1) => {
+    async (product: Product, quantity = 1): Promise<AddItemResult> => {
+      try {
+        const res = await fetch('/api/products/all/validate-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ products: [{ productId: product.id, quantity }] }),
+        });
+        if (res.ok) {
+          const data = await res.json() as { valid: boolean; errors?: string[] };
+          if (!data.valid) {
+            const error = data.errors?.[0] ?? 'Stock insuffisant pour ce produit.';
+            return { success: false, error };
+          }
+        }
+        // En cas d'erreur réseau ou réponse non-ok, on laisse passer (dégradé gracieux)
+      } catch {
+        // Pas de validation possible, on continue
+      }
+
       updateItems((prev) => {
         const existing = prev.find((i) => i.productId === product.id);
         if (existing) {
@@ -81,6 +104,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           },
         ];
       });
+      return { success: true };
     },
     [updateItems]
   );

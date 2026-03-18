@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   ShoppingCart,
@@ -13,10 +14,14 @@ import {
   Menu,
   X,
   Store,
+  Trash2,
+  ShoppingBag,
+  Heart,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { USER_ROLES } from '@/lib/constants';
+import { formatPrice } from '@/lib/utils';
 
 function NotificationBadge() {
   const { isAuthenticated } = useAuth();
@@ -41,7 +46,7 @@ function NotificationBadge() {
       return;
     }
     fetchUnread();
-    const interval = setInterval(fetchUnread, 60_000);
+    const interval = setInterval(fetchUnread, 30_000);
     return () => clearInterval(interval);
   }, [isAuthenticated, fetchUnread]);
 
@@ -62,20 +67,118 @@ function NotificationBadge() {
 }
 
 function CartButton() {
-  const { itemCount } = useCart();
+  const { items, itemCount, total, removeItem } = useCart();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const previewItems = items.slice(0, 3);
+  const hasMore = items.length > 3;
+
   return (
-    <Link
-      href="/cart"
-      className="relative p-2 rounded-lg text-[var(--neutral-500)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-100)] transition-colors"
-      aria-label="Panier"
-    >
-      <ShoppingCart size={20} />
-      {itemCount > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] text-[10px] font-bold px-1">
-          {itemCount > 99 ? '99+' : itemCount}
-        </span>
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="relative p-2 rounded-lg text-[var(--neutral-500)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-100)] transition-colors"
+        aria-label="Panier"
+        aria-expanded={open}
+      >
+        <ShoppingCart size={20} />
+        {itemCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] text-[10px] font-bold px-1">
+            {itemCount > 99 ? '99+' : itemCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-80 rounded-xl border border-[var(--border-color)] bg-[var(--card-background)] shadow-[var(--shadow-lg)] z-50 overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--border-color)] flex items-center justify-between">
+            <span className="text-sm font-semibold text-[var(--foreground)]">
+              Panier {itemCount > 0 && <span className="text-[var(--neutral-500)] font-normal">({itemCount} article{itemCount > 1 ? 's' : ''})</span>}
+            </span>
+          </div>
+
+          {items.length === 0 ? (
+            <div className="px-4 py-6 text-center text-sm text-[var(--neutral-500)]">
+              Votre panier est vide
+            </div>
+          ) : (
+            <>
+              <ul className="divide-y divide-[var(--border-color)]">
+                {previewItems.map((item) => (
+                  <li key={item.productId} className="flex items-center gap-3 px-4 py-3">
+                    <div className="relative w-10 h-10 rounded-lg bg-[var(--neutral-100)] overflow-hidden flex-shrink-0">
+                      {item.imageUrl ? (
+                        <Image
+                          src={item.imageUrl}
+                          alt={item.name}
+                          fill
+                          sizes="40px"
+                          className="object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-[var(--neutral-400)]">
+                          <ShoppingCart size={16} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[var(--foreground)] truncate">{item.name}</p>
+                      <p className="text-xs text-[var(--neutral-500)]">
+                        {item.quantity} × {formatPrice(item.price)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-sm font-semibold text-[var(--primary)]">
+                        {formatPrice(item.price * item.quantity)}
+                      </span>
+                      <button
+                        onClick={() => removeItem(item.productId)}
+                        className="p-1 rounded text-[var(--neutral-400)] hover:text-[var(--error)] hover:bg-[var(--error-light)] transition-colors"
+                        aria-label={`Retirer ${item.name}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {hasMore && (
+                <p className="px-4 py-2 text-xs text-[var(--neutral-500)] text-center border-t border-[var(--border-color)]">
+                  +{items.length - 3} autre{items.length - 3 > 1 ? 's' : ''} article{items.length - 3 > 1 ? 's' : ''}
+                </p>
+              )}
+
+              <div className="px-4 py-3 border-t border-[var(--border-color)] space-y-3">
+                <div className="flex items-center justify-between text-sm font-semibold">
+                  <span className="text-[var(--foreground)]">Total</span>
+                  <span className="text-[var(--primary)]">{formatPrice(total)}</span>
+                </div>
+                <Link
+                  href="/cart"
+                  onClick={() => setOpen(false)}
+                  className="block w-full text-center px-4 py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] text-sm font-medium hover:bg-[var(--primary-hover)] transition-colors"
+                >
+                  Voir le panier
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
       )}
-    </Link>
+    </div>
   );
 }
 
@@ -115,7 +218,7 @@ function UserMenu() {
   const roleLabel =
     user.role === USER_ROLES.PLATFORM_ADMIN
       ? 'Admin'
-      : user.role === USER_ROLES.MERCHANT
+      : user.role === USER_ROLES.MERCHANT_OWNER || user.role === USER_ROLES.MERCHANT_STAFF
       ? 'Marchand'
       : 'Client';
 
@@ -159,6 +262,26 @@ function UserMenu() {
               <User size={15} />
               Mon profil
             </Link>
+            {user.role === USER_ROLES.CUSTOMER && (
+              <>
+                <Link
+                  href="/orders"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[var(--foreground)] hover:bg-[var(--neutral-100)] transition-colors"
+                >
+                  <ShoppingBag size={15} />
+                  Mes commandes
+                </Link>
+                <Link
+                  href="/favorites"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[var(--foreground)] hover:bg-[var(--neutral-100)] transition-colors"
+                >
+                  <Heart size={15} />
+                  Mes favoris
+                </Link>
+              </>
+            )}
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[var(--error)] hover:bg-[var(--error-light)] transition-colors"
