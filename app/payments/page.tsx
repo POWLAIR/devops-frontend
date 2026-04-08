@@ -94,20 +94,60 @@ function PaymentsContent() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/payments');
-      if (res.status === 401) {
+      const [resPayments, resOrders] = await Promise.all([
+        fetch('/api/payments'),
+        fetch('/api/orders'),
+      ]);
+
+      if (resPayments.status === 401 || resOrders.status === 401) {
         await logout();
         router.replace('/login?redirect=/payments');
         return;
       }
-      if (!res.ok) {
-        const data = (await res.json()) as { message?: string; detail?: string };
-        setError(data.message ?? data.detail ?? 'Impossible de charger les paiements.');
-        return;
+
+      // Paiements réels du payment-service
+      let realPayments: Payment[] = [];
+      if (resPayments.ok) {
+        const data = (await resPayments.json()) as Record<string, unknown>[] | { payments?: Record<string, unknown>[] };
+        const raw = Array.isArray(data) ? data : (data.payments ?? []);
+        realPayments = raw.map(normalizePayment);
       }
-      const data = (await res.json()) as Record<string, unknown>[] | { payments?: Record<string, unknown>[] };
-      const raw = Array.isArray(data) ? data : (data.payments ?? []);
-      setPayments(raw.map(normalizePayment));
+
+      // Commandes payées → synthèse de paiements pour les commandes sans enregistrement payment-service
+      let syntheticPayments: Payment[] = [];
+      if (resOrders.ok) {
+        const ordersData = (await resOrders.json()) as Record<string, unknown>[];
+        const orders = Array.isArray(ordersData) ? ordersData : [];
+        const realOrderIds = new Set(realPayments.map((p) => p.order_id));
+
+        syntheticPayments = orders
+          .filter((o) => {
+            const ps = (o.paymentStatus ?? o.payment_status) as string | undefined;
+            return (ps === 'paid' || ps === 'succeeded') && !realOrderIds.has(o.id as string);
+          })
+          .map((o) => {
+            const total = parseFloat(o.total as string) || 0;
+            const commission = calculateCommission(total, PLATFORM_COMMISSION_RATE);
+            return normalizePayment({
+              id: `order-${o.id as string}`,
+              orderId: o.id,
+              tenantId: o.tenantId,
+              userId: o.userId,
+              amount: total,
+              commission,
+              netAmount: total - commission,
+              currency: 'EUR',
+              status: 'succeeded',
+              createdAt: o.createdAt,
+              updatedAt: o.updatedAt,
+            });
+          });
+      }
+
+      const all = [...realPayments, ...syntheticPayments].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+      setPayments(all);
     } catch {
       setError('Erreur réseau. Veuillez réessayer.');
     } finally {

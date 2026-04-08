@@ -10,6 +10,7 @@ import {
   Package,
   ShoppingBag,
   Wallet,
+  Rocket,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { USER_ROLES } from '@/lib/constants';
@@ -35,6 +36,12 @@ const MERCHANT_NAV: NavItem[] = [
   { href: '/orders', label: 'Commandes', icon: <ShoppingBag size={18} /> },
   { href: '/payments', label: 'Paiements reçus', icon: <Wallet size={18} /> },
 ];
+
+const MERCHANT_OWNER_EXTRA: NavItem = {
+  href: '/onboarding',
+  label: 'Onboarding',
+  icon: <Rocket size={18} />,
+};
 
 function NavLink({ item }: { item: NavItem }) {
   const pathname = usePathname();
@@ -71,7 +78,9 @@ export function Sidebar() {
   let navItems: NavItem[] = [];
   if (user.role === USER_ROLES.PLATFORM_ADMIN) {
     navItems = ADMIN_NAV;
-  } else if (user.role === USER_ROLES.MERCHANT_OWNER || user.role === USER_ROLES.MERCHANT_STAFF) {
+  } else if (user.role === USER_ROLES.MERCHANT_OWNER) {
+    navItems = [...MERCHANT_NAV, MERCHANT_OWNER_EXTRA];
+  } else if (user.role === USER_ROLES.MERCHANT_STAFF) {
     navItems = MERCHANT_NAV;
   } else {
     return null;

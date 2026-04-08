@@ -23,19 +23,26 @@ export interface User {
   updated_at?: string;
 }
 
+// Réponse du tenant-service (TypeORM/NestJS — camelCase)
 export interface Tenant {
   id: string;
-  name: string;
-  slug?: string;
-  email?: string;
-  status?: string;
-  plan_id?: string;
+  name?: string;
+  contactEmail?: string;
   subdomain?: string;
   description?: string;
-  custom_domain?: string;
-  onboarding_completed?: boolean;
-  created_at?: string;
-  updated_at?: string;
+  customDomain?: string;
+  status?: string;
+  onboardingStep?: number;
+  onboardingCompleted?: boolean;
+  subscriptions?: TenantSubscription[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TenantSubscription {
+  id?: string;
+  status?: string;
+  plan?: Plan;
 }
 
 export interface LoginRequest {
@@ -234,28 +241,20 @@ export interface NotificationStats {
 
 // ─── Tenant Service ───────────────────────────────────────────────────────────
 
+// Réponse du tenant-service — champs en camelCase
 export interface Plan {
-  id: string;
+  id: string;      // 'free' | 'starter' | 'pro' | 'enterprise'
   name: string;
-  slug: string;
-  price: number;
-  billing_period?: string;
-  max_products?: number;
-  max_orders_per_month?: number;
-  features?: string[];
-  is_active?: boolean;
+  monthlyPrice: number;
+  productLimit: number;
+  orderLimit: number;
 }
 
+// Réponse réelle du tenant-service : { tenantId, currentStep, completed }
 export interface OnboardingProgress {
-  tenant_id: string;
-  current_step: number;
-  completed_steps: number[];
+  tenantId: string;
+  currentStep: number;
   completed: boolean;
-  steps?: Array<{
-    step: number;
-    name: string;
-    completed: boolean;
-  }>;
 }
 
 export interface CompleteStepRequest {
