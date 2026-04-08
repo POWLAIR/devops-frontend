@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
   product: Product;
+  /** Pour le LCP (ex. première carte sur la page d'accueil) */
+  imagePriority?: boolean;
 }
 
 function StarRating({ rating, count }: { rating: number; count?: number }) {
@@ -57,7 +59,7 @@ function StockBadge({ stock }: { stock: number }) {
   return <Badge variant="success">En stock</Badge>;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, imagePriority = false }: ProductCardProps) {
   // NestJS returns camelCase; the shared type uses snake_case — support both
   const p = product as Product & {
     imageUrl?: string;
@@ -88,6 +90,7 @@ export function ProductCard({ product }: ProductCardProps) {
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             unoptimized
+            priority={imagePriority}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-[var(--neutral-400)]">

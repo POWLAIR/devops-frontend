@@ -10,9 +10,8 @@ import { Table } from '@/components/ui/Table';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Pagination } from '@/components/ui/Pagination';
-import { useAuth } from '@/lib/auth-context';
-import { useRouter } from 'next/navigation';
 import { USER_ROLES, DEFAULT_PAGE_SIZE, PLATFORM_COMMISSION_RATE } from '@/lib/constants';
+import { apiFetch, ApiUnauthorizedError } from '@/lib/api-client';
 import {
   getPaymentStatusDisplay,
   formatPrice,
@@ -82,8 +81,6 @@ function KpiCard({ label, value, sub }: { label: string; value: string; sub: str
 }
 
 function PaymentsContent() {
-  const router = useRouter();
-  const { logout } = useAuth();
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,15 +92,9 @@ function PaymentsContent() {
     setError(null);
     try {
       const [resPayments, resOrders] = await Promise.all([
-        fetch('/api/payments'),
-        fetch('/api/orders'),
+        apiFetch('/api/payments'),
+        apiFetch('/api/orders'),
       ]);
-
-      if (resPayments.status === 401 || resOrders.status === 401) {
-        await logout();
-        router.replace('/login?redirect=/payments');
-        return;
-      }
 
       // Paiements réels du payment-service
       let realPayments: Payment[] = [];
@@ -148,12 +139,13 @@ function PaymentsContent() {
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       );
       setPayments(all);
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
       setError('Erreur réseau. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
     }
-  }, [logout, router]);
+  }, []);
 
   useEffect(() => {
     fetchPayments();
@@ -328,12 +320,14 @@ function PaymentsContent() {
           />
         ) : (
           <>
-            <Table<Payment>
-              columns={columns}
-              data={paginatedPayments}
-              keyExtractor={(row) => row.id}
-              emptyMessage="Aucun paiement trouvé."
-            />
+            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+              <Table<Payment>
+                columns={columns}
+                data={paginatedPayments}
+                keyExtractor={(row) => row.id}
+                emptyMessage="Aucun paiement trouvé."
+              />
+            </div>
             <div className="mt-6">
               <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
             </div>

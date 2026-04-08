@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { formatRelativeDate } from '@/lib/utils';
 import type { Review } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { apiFetch, ApiUnauthorizedError } from '@/lib/api-client';
 
 // ─── Normalisation camelCase (NestJS) → frontend type ────────────────────────
 
@@ -117,18 +118,22 @@ export function ReviewSection({ productId, isAuthenticated, reviewsBaseUrl }: Re
 
   const fetchReviews = useCallback(() => {
     setIsLoading(true);
-    fetch(reviewsUrl)
-      .then((res) => res.json())
-      .then((data: unknown) => {
+    (async () => {
+      try {
+        const res = await apiFetch(reviewsUrl, { skipErrorToast: true, skipUnauthorizedHandling: true });
+        const data: unknown = await res.json();
         const raw = Array.isArray(data)
           ? data
-          : Array.isArray((data as any)?.data)
-          ? (data as any).data
-          : [];
+          : Array.isArray((data as { data?: unknown[] })?.data)
+            ? (data as { data: unknown[] }).data
+            : [];
         setReviews(raw.map((r: Record<string, unknown>) => normalizeReview(r)));
-      })
-      .catch(() => setReviews([]))
-      .finally(() => setIsLoading(false));
+      } catch {
+        setReviews([]);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, [reviewsUrl]);
 
   useEffect(() => {
@@ -144,7 +149,7 @@ export function ReviewSection({ productId, isAuthenticated, reviewsBaseUrl }: Re
     setSubmitting(true);
     setSubmitError('');
     try {
-      const res = await fetch(reviewsUrl, {
+      const res = await apiFetch(reviewsUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating, comment: comment.trim() || undefined }),
@@ -159,6 +164,7 @@ export function ReviewSection({ productId, isAuthenticated, reviewsBaseUrl }: Re
       fetchReviews();
       setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (err: unknown) {
+      if (err instanceof ApiUnauthorizedError) return;
       setSubmitError(err instanceof Error ? err.message : 'Erreur inconnue.');
     } finally {
       setSubmitting(false);
@@ -249,7 +255,11 @@ export function ReviewSection({ productId, isAuthenticated, reviewsBaseUrl }: Re
               </h3>
 
               {submitSuccess && (
-                <div className="mb-4 rounded-lg bg-[var(--success-light,color-mix(in_srgb,var(--success)_15%,transparent))] border border-[var(--success)] text-[var(--success)] text-sm px-3 py-2">
+                <div
+                  className="mb-4 rounded-lg bg-[var(--success-light,color-mix(in_srgb,var(--success)_15%,transparent))] border border-[var(--success)] text-[var(--success)] text-sm px-3 py-2"
+                  role="status"
+                  aria-live="polite"
+                >
                   Avis publié avec succès !
                 </div>
               )}
@@ -288,7 +298,7 @@ export function ReviewSection({ productId, isAuthenticated, reviewsBaseUrl }: Re
                 </div>
 
                 {submitError && (
-                  <p className="text-xs text-[var(--error)]" role="alert">
+                  <p className="text-xs text-[var(--error)]" role="alert" aria-live="polite">
                     {submitError}
                   </p>
                 )}

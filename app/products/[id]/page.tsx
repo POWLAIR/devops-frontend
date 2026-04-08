@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -15,6 +15,7 @@ import { useCart } from '@/lib/cart-context';
 import { formatPrice, getRatingStars } from '@/lib/utils';
 import type { Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { apiFetch } from '@/lib/api-client';
 
 // ─── Normalisation camelCase (NestJS) → snake_case (frontend types) ──────────
 
@@ -32,6 +33,22 @@ function normalizeProduct(raw: Record<string, unknown>): Product {
     stock: parseInt(String(raw.stock ?? 0), 10),
     category: (raw.category as string | undefined),
   };
+}
+
+async function loadProduct(base: string, pid: string): Promise<Product> {
+  const res = await apiFetch(`${base}/${pid}`, { skipErrorToast: true });
+  if (!res.ok) throw new Error('Produit introuvable.');
+  return normalizeProduct((await res.json()) as Record<string, unknown>);
+}
+
+async function loadFavoriteState(pid: string): Promise<boolean> {
+  const res = await apiFetch(`/api/favorites/check/${pid}`, {
+    skipErrorToast: true,
+    skipUnauthorizedHandling: true,
+  });
+  if (!res.ok) return false;
+  const data = (await res.json()) as { isFavorite?: boolean };
+  return data.isFavorite ?? false;
 }
 
 // ─── Star rating (display) ────────────────────────────────────────────────────
@@ -129,41 +146,49 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+
+  const [quantity, setQuantity] = useState(1);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
   const [cartError, setCartError] = useState<string | null>(null);
 
-  // Fetch product
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
     setIsLoading(true);
     setError(null);
-    fetch(`${productBaseUrl}/${id}`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Produit introuvable.');
-        return res.json();
-      })
-      .then((data) => {
-        setProduct(normalizeProduct(data as Record<string, unknown>));
-        setIsLoading(false);
+    loadProduct(productBaseUrl, id)
+      .then((p) => {
+        if (!cancelled) setProduct(p);
       })
       .catch((err: Error) => {
-        setError(err.message);
-        setIsLoading(false);
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [id, productBaseUrl]);
 
-  // Fetch favorite state (connected only)
   useEffect(() => {
-    if (!isAuthenticated || !id) return;
-    fetch(`/api/favorites/check/${id}`)
-      .then((res) => res.json())
-      .then((data: { isFavorite?: boolean }) => {
-        setIsFavorite(data.isFavorite ?? false);
+    if (!isAuthenticated || !id) {
+      setIsFavorite(false);
+      return;
+    }
+    let cancelled = false;
+    loadFavoriteState(id)
+      .then((fav) => {
+        if (!cancelled) setIsFavorite(fav);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setIsFavorite(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthenticated, id]);
 
   const stock = product?.stock ?? 0;
@@ -197,10 +222,10 @@ export default function ProductDetailPage() {
     setFavoriteLoading(true);
     try {
       const method = isFavorite ? 'DELETE' : 'POST';
-      await fetch(`/api/favorites/${id}`, { method });
+      await apiFetch(`/api/favorites/${id}`, { method });
       setIsFavorite((prev) => !prev);
     } catch {
-      // silently ignore
+      // silencieux
     } finally {
       setFavoriteLoading(false);
     }

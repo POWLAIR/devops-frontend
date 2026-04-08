@@ -21,6 +21,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/lib/toast-context';
 import { USER_ROLES, ORDER_STATUSES } from '@/lib/constants';
+import { apiFetch, ApiUnauthorizedError } from '@/lib/api-client';
 import {
   getOrderStatusDisplay,
   getPaymentStatusDisplay,
@@ -67,7 +68,7 @@ function OrderDetailContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const orderId = params.id;
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { addToast } = useToast();
 
   const isMerchantOrAdmin =
@@ -88,12 +89,7 @@ function OrderDetailContent() {
     setError(null);
     setNotFound(false);
     try {
-      const res = await fetch(`/api/orders/${orderId}`);
-      if (res.status === 401) {
-        await logout();
-        router.replace(`/login?redirect=/orders/${orderId}`);
-        return;
-      }
+      const res = await apiFetch(`/api/orders/${orderId}`);
       if (res.status === 404) {
         setNotFound(true);
         return;
@@ -105,12 +101,13 @@ function OrderDetailContent() {
       }
       const data = (await res.json()) as Record<string, unknown>;
       setOrder(normalizeOrder(data));
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
       setError('Erreur réseau. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
     }
-  }, [orderId, logout, router]);
+  }, [orderId]);
 
   useEffect(() => {
     fetchOrder();
@@ -121,16 +118,11 @@ function OrderDetailContent() {
     setIsUpdatingStatus(true);
     setStatusSuccess(false);
     try {
-      const res = await fetch(`/api/orders/${orderId}`, {
+      const res = await apiFetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (res.status === 401) {
-        await logout();
-        router.replace(`/login?redirect=/orders/${orderId}`);
-        return;
-      }
       const data = (await res.json()) as Record<string, unknown> & { message?: string; detail?: string };
       if (!res.ok) {
         addToast(data.message ?? data.detail ?? 'Impossible de mettre à jour le statut.', 'error');
@@ -140,7 +132,8 @@ function OrderDetailContent() {
       setStatusSuccess(true);
       addToast('Statut mis à jour avec succès.', 'success');
       setTimeout(() => setStatusSuccess(false), 3000);
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
       addToast('Erreur réseau. Veuillez réessayer.', 'error');
     } finally {
       setIsUpdatingStatus(false);

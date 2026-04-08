@@ -35,10 +35,11 @@ const typeConfig = {
 
 export function Toast({ toast, onRemove }: ToastProps) {
   const config = typeConfig[toast.type];
+  const liveRole = toast.type === 'error' ? 'alert' : 'status';
 
   return (
     <div
-      role="alert"
+      role={liveRole}
       className={cn(
         'flex items-start gap-3 w-full max-w-sm rounded-xl border px-4 py-3 shadow-[var(--shadow-lg)]',
         'animate-in slide-in-from-right-5 fade-in duration-300',

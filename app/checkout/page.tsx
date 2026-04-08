@@ -17,9 +17,9 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@/components/ui/Button';
 import { Spinner } from '@/components/ui/Spinner';
 import { useCart } from '@/lib/cart-context';
-import { useAuth } from '@/lib/auth-context';
 import { formatPrice } from '@/lib/utils';
 import { SHIPPING_FREE_THRESHOLD, SHIPPING_FEE } from '@/lib/constants';
+import { apiFetch, ApiUnauthorizedError } from '@/lib/api-client';
 import type { Order, CreatePaymentIntentResponse } from '@/lib/types';
 
 type Step = 1 | 2;
@@ -27,7 +27,6 @@ type Step = 1 | 2;
 function CheckoutContent() {
   const router = useRouter();
   const { items, total, clearCart } = useCart();
-  const { logout } = useAuth();
 
   const shipping = total > SHIPPING_FREE_THRESHOLD ? 0 : items.length > 0 ? SHIPPING_FEE : 0;
   const grandTotal = total + shipping;
@@ -49,48 +48,37 @@ function CheckoutContent() {
     }
   }, [items.length, step, router]);
 
-  const handleSessionExpired = useCallback(async () => {
-    await logout();
-    router.replace('/login?redirect=/checkout');
-  }, [logout, router]);
-
-  const createPaymentIntent = useCallback(
-    async (currentOrderId: string, amount: number) => {
-      setIsCreatingPayment(true);
-      setPaymentError(null);
-      try {
-        const res = await fetch('/api/payments/create-intent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount, order_id: currentOrderId }),
-        });
-        if (res.status === 401) {
-          await handleSessionExpired();
-          return;
-        }
-        const data = (await res.json()) as CreatePaymentIntentResponse & {
-          message?: string;
-          detail?: string;
-        };
-        if (!res.ok) {
-          setPaymentError(data.message ?? data.detail ?? 'Impossible de créer le paiement.');
-          return;
-        }
-        setPaymentIntent(data);
-      } catch {
-        setPaymentError('Impossible de contacter le service de paiement.');
-      } finally {
-        setIsCreatingPayment(false);
+  const createPaymentIntent = useCallback(async (currentOrderId: string, amount: number) => {
+    setIsCreatingPayment(true);
+    setPaymentError(null);
+    try {
+      const res = await apiFetch('/api/payments/create-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, order_id: currentOrderId }),
+      });
+      const data = (await res.json()) as CreatePaymentIntentResponse & {
+        message?: string;
+        detail?: string;
+      };
+      if (!res.ok) {
+        setPaymentError(data.message ?? data.detail ?? 'Impossible de créer le paiement.');
+        return;
       }
-    },
-    [handleSessionExpired],
-  );
+      setPaymentIntent(data);
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
+      setPaymentError('Impossible de contacter le service de paiement.');
+    } finally {
+      setIsCreatingPayment(false);
+    }
+  }, []);
 
   const handleConfirmOrder = async () => {
     setIsCreatingOrder(true);
     setOrderError(null);
     try {
-      const res = await fetch('/api/orders', {
+      const res = await apiFetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -102,10 +90,6 @@ function CheckoutContent() {
           status: 'pending',
         }),
       });
-      if (res.status === 401) {
-        await handleSessionExpired();
-        return;
-      }
       const data = (await res.json()) as Order & { message?: string; detail?: string };
       if (!res.ok) {
         setOrderError(data.message ?? data.detail ?? 'Impossible de créer la commande.');
@@ -114,7 +98,8 @@ function CheckoutContent() {
       setOrderId(data.id);
       setStep(2);
       await createPaymentIntent(data.id, grandTotal);
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
       setOrderError('Impossible de contacter le service de commande.');
     } finally {
       setIsCreatingOrder(false);
@@ -122,15 +107,26 @@ function CheckoutContent() {
   };
 
   const handleSimulatePayment = async () => {
-    if (!orderId) return;
+    if (!orderId || !paymentIntent) return;
     setIsSimulating(true);
     try {
-      await fetch('/api/products/decrement-stock', {
+      // Marquer le paiement comme "succeeded" côté payment-service
+      await apiFetch(`/api/payments/${paymentIntent.payment_id}/simulate`, {
+        method: 'POST',
+        skipErrorToast: true,
+      });
+    } catch {
+      // Dégradé gracieux : on continue même si l'appel échoue
+    }
+    try {
+      // Décrémenter le stock des produits commandés
+      await apiFetch('/api/products/decrement-stock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           products: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
         }),
+        skipErrorToast: true,
       });
     } catch {
       // Dégradé gracieux : on continue même si le décrément échoue

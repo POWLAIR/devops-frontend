@@ -8,3 +8,9 @@ export async function GET(request: NextRequest) {
     body: null,
   });
 }
+
+export async function POST(request: NextRequest) {
+  return proxyRequest(request, {
+    targetUrl: `${AUTH_SERVICE_URL}/tenants`,
+  });
+}

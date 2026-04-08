@@ -13,6 +13,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/lib/toast-context';
 import { formatDateTime } from '@/lib/utils';
 import { USER_ROLES } from '@/lib/constants';
+import { apiFetch, ApiUnauthorizedError } from '@/lib/api-client';
 import type { UserUpdateRequest, PasswordUpdateRequest } from '@/lib/types';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -56,7 +57,7 @@ function ProfileContent() {
     setIsSavingInfo(true);
     try {
       const body: UserUpdateRequest = { full_name: fullName };
-      const res = await fetch('/api/users/me', {
+      const res = await apiFetch('/api/users/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -68,7 +69,8 @@ function ProfileContent() {
       }
       await refreshUser();
       addToast('Profil mis à jour.', 'success');
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
       setInfoError('Erreur réseau. Veuillez réessayer.');
     } finally {
       setIsSavingInfo(false);
@@ -92,7 +94,7 @@ function ProfileContent() {
         current_password: currentPassword,
         new_password: newPassword,
       };
-      const res = await fetch('/api/users/me/password', {
+      const res = await apiFetch('/api/users/me/password', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -106,7 +108,8 @@ function ProfileContent() {
       setNewPassword('');
       setConfirmPassword('');
       addToast('Mot de passe changé avec succès.', 'success');
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
       setPasswordError('Erreur réseau. Veuillez réessayer.');
     } finally {
       setIsSavingPassword(false);

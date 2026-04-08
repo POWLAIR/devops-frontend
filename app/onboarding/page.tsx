@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Store, CreditCard, Settings, Package, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Store, CreditCard, Settings, Package, CheckCircle2, ExternalLink, LayoutDashboard } from 'lucide-react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -12,8 +12,11 @@ import { Spinner } from '@/components/ui/Spinner';
 import { Stepper } from '@/components/ui/Stepper';
 import { useAuth } from '@/lib/auth-context';
 import { USER_ROLES } from '@/lib/constants';
+import { apiFetch, ApiUnauthorizedError } from '@/lib/api-client';
 import { formatPrice } from '@/lib/utils';
 import type { Tenant, Plan, OnboardingProgress } from '@/lib/types';
+
+export const ONBOARDING_DONE_KEY = 'onboarding_completed';
 
 // ─── Définition des étapes ────────────────────────────────────────────────────
 
@@ -278,6 +281,40 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+// ─── Écran de complétion ──────────────────────────────────────────────────────
+
+function CompletedView({ shopName, onReview }: { shopName: string; onReview: () => void }) {
+  const router = useRouter();
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-16 flex flex-col items-center text-center gap-6">
+      <div className="w-20 h-20 rounded-full bg-[var(--success-light,#f0fdf4)] flex items-center justify-center">
+        <CheckCircle2 size={40} className="text-[var(--success,#16a34a)]" />
+      </div>
+      <div>
+        <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2">Votre boutique est prête !</h1>
+        <p className="text-sm text-[var(--neutral-500)] max-w-sm">
+          L&apos;onboarding de{' '}
+          <span className="font-semibold text-[var(--foreground)]">{shopName || 'votre boutique'}</span>{' '}
+          est terminé. Vous pouvez maintenant gérer vos produits et commandes.
+        </p>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Button
+          variant="primary"
+          size="lg"
+          leftIcon={<LayoutDashboard size={16} />}
+          onClick={() => router.push('/dashboard')}
+        >
+          Tableau de bord
+        </Button>
+        <Button variant="outline" size="md" onClick={onReview}>
+          Revoir la configuration
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Wizard principal ─────────────────────────────────────────────────────────
 
 function OnboardingWizard() {
@@ -286,6 +323,7 @@ function OnboardingWizard() {
 
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -307,17 +345,24 @@ function OnboardingWizard() {
     setIsLoading(true);
     try {
       const [progressRes, tenantRes] = await Promise.all([
-        fetch(`/api/tenant-onboarding/${tenantId}/progress`),
-        fetch(`/api/tenants/${tenantId}`),
+        apiFetch(`/api/tenant-onboarding/${tenantId}/progress`),
+        apiFetch(`/api/tenants/${tenantId}`),
       ]);
 
       if (progressRes.ok) {
         const progress: OnboardingProgress = await progressRes.json();
-        const step = progress.currentStep || 1;
-        setCurrentStep(step);
-        // Le backend ne stocke qu'un entier (étape la plus haute atteinte),
-        // pas un tableau — on dérive les étapes complétées depuis currentStep.
-        setCompletedSteps(Array.from({ length: step - 1 }, (_, i) => i + 1));
+        if (progress.completed) {
+          setIsCompleted(true);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(ONBOARDING_DONE_KEY, 'true');
+          }
+        } else {
+          const step = progress.currentStep || 1;
+          setCurrentStep(step);
+          // Le backend ne stocke qu'un entier (étape la plus haute atteinte),
+          // pas un tableau — on dérive les étapes complétées depuis currentStep.
+          setCompletedSteps(Array.from({ length: step - 1 }, (_, i) => i + 1));
+        }
       }
 
       if (tenantRes.ok) {
@@ -331,7 +376,8 @@ function OnboardingWizard() {
         const activePlan = t.subscriptions?.find((s) => s.status === 'active')?.plan?.id;
         setSelectedPlanId(activePlan || '');
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
       setError('Erreur lors du chargement de la progression.');
     } finally {
       setIsLoading(false);
@@ -344,27 +390,46 @@ function OnboardingWizard() {
 
   // Chargement des plans au montage (nécessaire dès l'étape 2 et pour le résumé étape 5)
   useEffect(() => {
-    fetch('/api/plans')
-      .then((res) => res.json())
-      .then((data) => setPlans(Array.isArray(data) ? data : data.plans ?? []))
-      .catch(() => setError('Impossible de charger les plans.'));
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch('/api/plans');
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (!cancelled) setPlans(Array.isArray(data) ? data : data.plans ?? []);
+      } catch (e) {
+        if (!cancelled && !(e instanceof ApiUnauthorizedError)) {
+          setError('Impossible de charger les plans.');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (currentStep === 4) {
-      fetch('/api/products')
-        .then((res) => res.json())
-        .then((data) => {
-          const items = Array.isArray(data) ? data : data.products ?? data.items ?? [];
-          setProductCount(items.length);
-        })
-        .catch(() => {});
-    }
+    if (currentStep !== 4) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch('/api/products', { skipErrorToast: true });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const items = Array.isArray(data) ? data : data.products ?? data.items ?? [];
+        if (!cancelled) setProductCount(items.length);
+      } catch {
+        /* silencieux */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [currentStep]);
 
   const patchTenant = async (fields: Partial<Tenant>) => {
     if (!tenantId) return;
-    const res = await fetch(`/api/tenants/${tenantId}`, {
+    const res = await apiFetch(`/api/tenants/${tenantId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(fields),
@@ -374,7 +439,7 @@ function OnboardingWizard() {
 
   const completeStep = async (step: number) => {
     if (!tenantId) return;
-    const res = await fetch(`/api/tenant-onboarding/${tenantId}/complete-step`, {
+    const res = await apiFetch(`/api/tenant-onboarding/${tenantId}/complete-step`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ step }),
@@ -418,6 +483,9 @@ function OnboardingWizard() {
     setError(null);
     try {
       await completeStep(5);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(ONBOARDING_DONE_KEY, 'true');
+      }
       await refreshUser();
       router.push('/dashboard');
     } catch (err) {
@@ -432,6 +500,15 @@ function OnboardingWizard() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <Spinner size="lg" />
       </div>
+    );
+  }
+
+  if (isCompleted) {
+    return (
+      <CompletedView
+        shopName={shopName}
+        onReview={() => setIsCompleted(false)}
+      />
     );
   }
 

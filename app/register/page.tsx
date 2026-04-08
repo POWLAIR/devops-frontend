@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import type { AuthResponse } from '@/lib/types';
+import { apiFetch } from '@/lib/api-client';
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
@@ -70,10 +71,12 @@ export default function RegisterPage() {
         body.full_name = fullName.trim();
       }
 
-      const res = await fetch('/api/auth/register', {
+      const res = await apiFetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        skipUnauthorizedHandling: true,
+        skipErrorToast: true,
       });
 
       const data: AuthResponse & { message?: string; detail?: string } = await res.json();

@@ -19,6 +19,7 @@ import {
   getOrderStatusDisplay,
 } from '@/lib/utils';
 import { USER_ROLES, PLATFORM_COMMISSION_RATE } from '@/lib/constants';
+import { apiFetch, ApiUnauthorizedError } from '@/lib/api-client';
 import type { Order, OrderItem, Product } from '@/lib/types';
 import type { OrderStatus, PaymentStatus } from '@/lib/constants';
 import type { Column } from '@/components/ui/Table';
@@ -72,7 +73,7 @@ const ORDER_STATUS_BADGE: Record<string, 'warning' | 'primary' | 'secondary' | '
 
 function DashboardContent() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeProductCount, setActiveProductCount] = useState(0);
@@ -84,16 +85,9 @@ function DashboardContent() {
     setError(null);
     try {
       const [resOrders, resProducts] = await Promise.all([
-        fetch('/api/orders'),
-        fetch('/api/products'),
+        apiFetch('/api/orders'),
+        apiFetch('/api/products'),
       ]);
-
-      // Handle 401 on any response
-      if (resOrders.status === 401 || resProducts.status === 401) {
-        await logout();
-        router.replace('/login?redirect=/dashboard');
-        return;
-      }
 
       if (!resOrders.ok || !resProducts.ok) {
         setError('Impossible de charger les données du tableau de bord.');
@@ -118,12 +112,13 @@ function DashboardContent() {
         (p) => p.is_active !== false && (p as unknown as Record<string, unknown>).isActive !== false
       );
       setActiveProductCount(active.length);
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
       setError('Erreur réseau. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
     }
-  }, [logout, router]);
+  }, []);
 
   useEffect(() => {
     fetchAll();

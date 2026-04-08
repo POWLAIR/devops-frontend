@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { Product } from './types';
 import { CART_STORAGE_KEY } from './constants';
+import { apiFetch } from './api-client';
 
 export interface CartItem {
   productId: string;
@@ -66,10 +67,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addItem = useCallback(
     async (product: Product, quantity = 1): Promise<AddItemResult> => {
       try {
-        const res = await fetch('/api/products/all/validate-batch', {
+        const res = await apiFetch('/api/products/all/validate-batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ products: [{ productId: product.id, quantity }] }),
+          skipUnauthorizedHandling: true,
+          skipErrorToast: true,
         });
         if (res.ok) {
           const data = await res.json() as { valid: boolean; errors?: string[] };

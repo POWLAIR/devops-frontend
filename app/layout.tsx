@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { CartProvider } from "@/lib/cart-context";
 import { ToastProvider } from "@/lib/toast-context";
+import { MobileMenuProvider } from "@/lib/mobile-menu-context";
+import { ApiClientBridge } from "@/components/ApiClientBridge";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -35,17 +37,21 @@ export default function RootLayout({
         <AuthProvider>
           <CartProvider>
             <ToastProvider>
-              <div className="flex flex-col min-h-screen">
-                <Header />
-                <div className="flex flex-1">
-                  <Sidebar />
-                  <main className="flex-1 min-w-0">
-                    {children}
-                  </main>
-                </div>
-                <Footer />
-                <ToastContainer />
-              </div>
+              <ApiClientBridge>
+                <MobileMenuProvider>
+                  <div className="flex flex-col min-h-screen">
+                    <Header />
+                    <div className="flex flex-1">
+                      <Sidebar />
+                      <main className="flex-1 min-w-0 w-full">
+                        {children}
+                      </main>
+                    </div>
+                    <Footer />
+                    <ToastContainer />
+                  </div>
+                </MobileMenuProvider>
+              </ApiClientBridge>
             </ToastProvider>
           </CartProvider>
         </AuthProvider>

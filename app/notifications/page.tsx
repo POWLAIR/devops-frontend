@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Bell, Home, ChevronRight, Mail, MessageSquare } from 'lucide-react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Badge } from '@/components/ui/Badge';
@@ -10,9 +9,9 @@ import { Table } from '@/components/ui/Table';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
-import { useAuth } from '@/lib/auth-context';
 import { getNotificationStatusDisplay, formatDateTime, truncate } from '@/lib/utils';
 import { NOTIFICATION_STATUSES, DEFAULT_PAGE_SIZE } from '@/lib/constants';
+import { apiFetch, ApiUnauthorizedError } from '@/lib/api-client';
 import type { Notification, NotificationStats } from '@/lib/types';
 import type { Column } from '@/components/ui/Table';
 
@@ -75,8 +74,6 @@ const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 // ─── Contenu principal ────────────────────────────────────────────────────────
 
 function NotificationsContent() {
-  const router = useRouter();
-  const { logout } = useAuth();
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [stats, setStats] = useState<NotificationStats | null>(null);
@@ -91,15 +88,10 @@ function NotificationsContent() {
     setError(null);
     try {
       const [resNotif, resStats] = await Promise.all([
-        fetch('/api/notifications'),
-        fetch('/api/notifications/stats'),
+        apiFetch('/api/notifications'),
+        apiFetch('/api/notifications/stats'),
       ]);
 
-      if (resNotif.status === 401) {
-        await logout();
-        router.replace('/login?redirect=/notifications');
-        return;
-      }
       if (!resNotif.ok) {
         const data = (await resNotif.json()) as { message?: string; detail?: string };
         setError(data.message ?? data.detail ?? 'Impossible de charger les notifications.');
@@ -118,12 +110,13 @@ function NotificationsContent() {
         const rawStats = (await resStats.json()) as NotificationStats;
         setStats(rawStats);
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
       setError('Erreur réseau. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
     }
-  }, [logout, router]);
+  }, []);
 
   useEffect(() => {
     fetchData();

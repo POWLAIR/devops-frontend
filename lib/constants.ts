@@ -71,6 +71,7 @@ export const ERROR_MESSAGES = {
   NOT_FOUND: "La ressource demandée n'existe pas.",
   SERVER: 'Une erreur serveur est survenue. Veuillez réessayer.',
   TIMEOUT: 'La requête a expiré. Veuillez réessayer.',
+  SERVICE_UNAVAILABLE: 'Service indisponible',
 } as const;
 
 // Frais de livraison

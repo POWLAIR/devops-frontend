@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Search, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Search, SlidersHorizontal, ArrowUpDown, Store, X as XIcon } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { SkeletonCard } from '@/components/ui/Skeleton';
@@ -10,6 +11,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ProductCard } from '@/components/products/ProductCard';
 import { FilterPanel, type FilterState } from '@/components/products/FilterPanel';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch, ApiUnauthorizedError } from '@/lib/api-client';
+import { formatPrice } from '@/lib/utils';
 import type { Product, Category } from '@/lib/types';
 
 const PAGE_SIZE = 20;
@@ -67,6 +70,12 @@ function sortProducts(products: Product[], sortBy: SortValue): Product[] {
 export default function ProductsPage() {
   const { user } = useAuth();
 
+  // Tenant filter from URL
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tenantId = searchParams.get('tenant');
+  const shopName = searchParams.get('shop');
+
   // Search
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -101,7 +110,7 @@ export default function ProductsPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [filters, sortBy]);
+  }, [filters, sortBy, tenantId]);
 
   // Fetch categories — merchant/admin see tenant-scoped, customer/guest see marketplace
   const isMerchantOrAdmin = user && (
@@ -112,7 +121,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     const endpoint = isMerchantOrAdmin ? '/api/categories' : '/api/categories/all';
-    fetch(endpoint)
+    apiFetch(endpoint, { skipErrorToast: true, skipUnauthorizedHandling: true })
       .then((res) => res.json())
       .then((data: unknown) => {
         const raw: unknown[] = Array.isArray(data)
@@ -156,7 +165,7 @@ export default function ProductsPage() {
           : `/api/products/all?${params}`;
       }
 
-      const res = await fetch(url);
+      const res = await apiFetch(url, { skipErrorToast: true });
       if (!res.ok) throw new Error('Erreur lors du chargement des produits.');
       const data: Product[] | { data?: Product[]; items?: Product[] } = await res.json();
       const list: Product[] = Array.isArray(data)
@@ -164,6 +173,10 @@ export default function ProductsPage() {
         : (data?.data ?? data?.items ?? []);
       setAllProducts(list);
     } catch (err) {
+      if (err instanceof ApiUnauthorizedError) {
+        setAllProducts([]);
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Erreur inconnue.');
       setAllProducts([]);
     } finally {
@@ -175,15 +188,29 @@ export default function ProductsPage() {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Client-side filtering (multi-category, price range, in-stock)
+  // Client-side filtering (tenant, multi-category, price range, in-stock)
   // NestJS may return numeric fields as strings; normalise with parseFloat/parseInt
   const filteredProducts = React.useMemo(() => {
     let result = allProducts;
 
+    // Tenant pre-filter (URL-driven context)
+    // Backend returns camelCase (tenantId) from TypeORM; snake_case is a fallback
+    if (tenantId) {
+      result = result.filter((p) => {
+        const pTenantId = (p as any).tenantId ?? p.tenant_id;
+        return pTenantId === tenantId;
+      });
+    }
+
     if (filters.categoryIds.length > 0) {
       result = result.filter((p) => {
-        const cat = (p as any).category as string | undefined;
-        return cat ? filters.categoryIds.includes(cat) : false;
+        const catId = (p as any).category_id as string | undefined;
+        const catName = (p as any).category as string | undefined;
+        return catId
+          ? filters.categoryIds.includes(catId)
+          : catName
+          ? filters.categoryIds.includes(catName)
+          : false;
       });
     }
     if (filters.priceMin > ABSOLUTE_MIN) {
@@ -197,7 +224,7 @@ export default function ProductsPage() {
     }
 
     return sortProducts(result, sortBy);
-  }, [allProducts, filters, sortBy]);
+  }, [allProducts, filters, sortBy, tenantId]);
 
   // Pagination slice
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
@@ -211,6 +238,14 @@ export default function ProductsPage() {
     setPage(1);
   }
 
+  // Compute active non-default filter chips
+  const hasActiveFilters =
+    filters.categoryIds.length > 0 ||
+    filters.priceMin > ABSOLUTE_MIN ||
+    filters.priceMax < ABSOLUTE_MAX ||
+    filters.inStockOnly;
+  const hasAnyChip = !!tenantId || hasActiveFilters;
+
   return (
     <div className="min-h-screen bg-[var(--background)]">
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -223,17 +258,22 @@ export default function ProductsPage() {
           </p>
         </div>
 
-        {/* Search + Sort bar */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          {/* Mobile filter toggle */}
+        {/* Search + Sort + Filter button */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          {/* Filter toggle (all screen sizes) */}
           <Button
             variant="outline"
             size="md"
             leftIcon={<SlidersHorizontal size={16} />}
             onClick={() => setFilterOpen(true)}
-            className="lg:hidden shrink-0"
+            className="shrink-0"
           >
             Filtres
+            {hasActiveFilters && (
+              <span className="ml-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] text-[10px] font-bold leading-none">
+                {filters.categoryIds.length + (filters.inStockOnly ? 1 : 0) + (filters.priceMin > ABSOLUTE_MIN || filters.priceMax < ABSOLUTE_MAX ? 1 : 0)}
+              </span>
+            )}
           </Button>
 
           {/* Search */}
@@ -268,6 +308,96 @@ export default function ProductsPage() {
           </div>
         </div>
 
+        {/* Active filter chips */}
+        {hasAnyChip && (
+          <div className="flex flex-wrap items-center gap-2 mb-5">
+            {/* Boutique chip */}
+            {tenantId && (
+              <span className="inline-flex items-center gap-1.5 h-7 pl-2.5 pr-1.5 rounded-full border border-[var(--primary)]/40 bg-[var(--primary-light)] text-xs font-medium text-[var(--primary)]">
+                <Store size={12} aria-hidden />
+                {shopName ?? tenantId}
+                <button
+                  onClick={() => router.push('/products')}
+                  className="ml-0.5 p-0.5 rounded-full hover:bg-[var(--primary)]/20 transition-colors"
+                  aria-label="Retirer le filtre boutique"
+                >
+                  <XIcon size={11} />
+                </button>
+              </span>
+            )}
+
+            {/* Category chips */}
+            {filters.categoryIds.map((id) => {
+              const label = categories.find((c) => c.id === id)?.name ?? id;
+              return (
+                <span key={id} className="inline-flex items-center gap-1.5 h-7 pl-2.5 pr-1.5 rounded-full border border-[var(--border-color)] bg-[var(--card-background)] text-xs font-medium text-[var(--foreground)]">
+                  {label}
+                  <button
+                    onClick={() => setFilters({ ...filters, categoryIds: filters.categoryIds.filter((c) => c !== id) })}
+                    className="ml-0.5 p-0.5 rounded-full hover:bg-[var(--neutral-200)] transition-colors"
+                    aria-label={`Retirer la catégorie ${label}`}
+                  >
+                    <XIcon size={11} />
+                  </button>
+                </span>
+              );
+            })}
+
+            {/* Price chip */}
+            {(filters.priceMin > ABSOLUTE_MIN || filters.priceMax < ABSOLUTE_MAX) && (
+              <span className="inline-flex items-center gap-1.5 h-7 pl-2.5 pr-1.5 rounded-full border border-[var(--border-color)] bg-[var(--card-background)] text-xs font-medium text-[var(--foreground)]">
+                {formatPrice(filters.priceMin)} – {formatPrice(filters.priceMax)}
+                <button
+                  onClick={() => setFilters({ ...filters, priceMin: ABSOLUTE_MIN, priceMax: ABSOLUTE_MAX })}
+                  className="ml-0.5 p-0.5 rounded-full hover:bg-[var(--neutral-200)] transition-colors"
+                  aria-label="Retirer le filtre de prix"
+                >
+                  <XIcon size={11} />
+                </button>
+              </span>
+            )}
+
+            {/* Stock chip */}
+            {filters.inStockOnly && (
+              <span className="inline-flex items-center gap-1.5 h-7 pl-2.5 pr-1.5 rounded-full border border-[var(--border-color)] bg-[var(--card-background)] text-xs font-medium text-[var(--foreground)]">
+                En stock
+                <button
+                  onClick={() => setFilters({ ...filters, inStockOnly: false })}
+                  className="ml-0.5 p-0.5 rounded-full hover:bg-[var(--neutral-200)] transition-colors"
+                  aria-label="Retirer le filtre de stock"
+                >
+                  <XIcon size={11} />
+                </button>
+              </span>
+            )}
+
+            {/* Clear all filters (not boutique) */}
+            {hasActiveFilters && (
+              <button
+                onClick={resetFilters}
+                className="text-xs text-[var(--neutral-500)] hover:text-[var(--foreground)] underline underline-offset-2 transition-colors ml-1"
+              >
+                Tout effacer
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Filter drawer (all screen sizes) */}
+        <FilterPanel
+          categories={categories}
+          filters={filters}
+          absoluteMin={ABSOLUTE_MIN}
+          absoluteMax={ABSOLUTE_MAX}
+          onChange={setFilters}
+          onReset={resetFilters}
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          tenantId={tenantId}
+          shopName={shopName}
+          onClearBoutique={() => router.push('/products')}
+        />
+
         {/* Result count */}
         {!isLoading && (
           <p className="text-sm text-[var(--neutral-500)] mb-4">
@@ -277,63 +407,48 @@ export default function ProductsPage() {
           </p>
         )}
 
-        {/* Main layout */}
-        <div className="flex gap-6 items-start">
-          {/* Filter panel (desktop sidebar + mobile drawer) */}
-          <FilterPanel
-            categories={categories}
-            filters={filters}
-            absoluteMin={ABSOLUTE_MIN}
-            absoluteMax={ABSOLUTE_MAX}
-            onChange={setFilters}
-            onReset={resetFilters}
-            open={filterOpen}
-            onClose={() => setFilterOpen(false)}
-          />
+        {/* Product grid */}
+        <div>
+          {error && (
+            <div className="rounded-lg border border-[var(--error)] bg-[var(--error-light,color-mix(in_srgb,var(--error)_10%,transparent))] text-[var(--error)] text-sm px-4 py-3 mb-4">
+              {error}
+            </div>
+          )}
 
-          {/* Product grid */}
-          <div className="flex-1 min-w-0">
-            {error && (
-              <div className="rounded-lg border border-[var(--error)] bg-[var(--error-light,color-mix(in_srgb,var(--error)_10%,transparent))] text-[var(--error)] text-sm px-4 py-3 mb-4">
-                {error}
-              </div>
-            )}
-
-            {isLoading ? (
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          ) : paginatedProducts.length === 0 ? (
+            <EmptyState
+              title="Aucun produit trouvé"
+              description="Essayez de modifier vos filtres ou votre recherche."
+              action={
+                <Button variant="outline" size="sm" onClick={resetFilters}>
+                  Réinitialiser les filtres
+                </Button>
+              }
+            />
+          ) : (
+            <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <SkeletonCard key={i} />
+                {paginatedProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
                 ))}
               </div>
-            ) : paginatedProducts.length === 0 ? (
-              <EmptyState
-                title="Aucun produit trouvé"
-                description="Essayez de modifier vos filtres ou votre recherche."
-                action={
-                  <Button variant="outline" size="sm" onClick={resetFilters}>
-                    Réinitialiser les filtres
-                  </Button>
-                }
-              />
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {paginatedProducts.map((product) => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
-                </div>
 
-                {totalPages > 1 && (
-                  <Pagination
-                    page={page}
-                    totalPages={totalPages}
-                    onPageChange={setPage}
-                    className="mt-8"
-                  />
-                )}
-              </>
-            )}
-          </div>
+              {totalPages > 1 && (
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  className="mt-8"
+                />
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

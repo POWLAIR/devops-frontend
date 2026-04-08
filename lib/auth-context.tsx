@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { saveSession, clearSession, getSession } from './auth';
+import { apiFetch, ApiUnauthorizedError } from './api-client';
 import type { User } from './types';
 
 interface AuthContextType {
@@ -46,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const response = await fetch('/api/users/me');
+      const response = await apiFetch('/api/users/me', { skipErrorToast: true });
       if (response.ok) {
         const updatedUser: User = await response.json();
         const session = getSession();
@@ -55,8 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(updatedUser);
         }
       }
-    } catch {
-      // Ignorer les erreurs
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
     }
   }, []);
 

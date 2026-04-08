@@ -12,6 +12,7 @@ import { useCart } from '@/lib/cart-context';
 import { useAuth } from '@/lib/auth-context';
 import { formatPrice } from '@/lib/utils';
 import { SHIPPING_FREE_THRESHOLD, SHIPPING_FEE } from '@/lib/constants';
+import { apiFetch } from '@/lib/api-client';
 
 interface StockValidationResult {
   productId: string;
@@ -38,12 +39,14 @@ export default function CartPage() {
     try {
       // Utilise l'endpoint "all" (cross-tenant) pour rester cohérent avec
       // l'affichage public des produits et éviter les faux "rupture de stock"
-      const res = await fetch('/api/products/all/validate-batch', {
+      const res = await apiFetch('/api/products/all/validate-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           products: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
         }),
+        skipUnauthorizedHandling: true,
+        skipErrorToast: true,
       });
       if (!res.ok) return;
       const data = await res.json() as {

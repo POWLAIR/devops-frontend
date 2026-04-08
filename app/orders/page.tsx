@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/lib/toast-context';
 import { USER_ROLES, ORDER_STATUSES } from '@/lib/constants';
+import { apiFetch, ApiUnauthorizedError } from '@/lib/api-client';
 import {
   getOrderStatusDisplay,
   getPaymentStatusDisplay,
@@ -108,7 +109,7 @@ function OrderForm({
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/orders', {
+      const res = await apiFetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: parsedItems, status: ORDER_STATUSES.PENDING }),
@@ -120,7 +121,8 @@ function OrderForm({
       }
       addToast('Commande créée avec succès.', 'success');
       onSuccess();
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
       setError('Erreur réseau. Veuillez réessayer.');
     } finally {
       setIsSubmitting(false);
@@ -222,7 +224,7 @@ function OrderForm({
 function OrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const showSuccess = searchParams.get('success') === 'true';
   const isMerchantOrAdmin =
@@ -240,12 +242,7 @@ function OrdersContent() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/orders');
-      if (res.status === 401) {
-        await logout();
-        router.replace('/login?redirect=/orders');
-        return;
-      }
+      const res = await apiFetch('/api/orders');
       if (!res.ok) {
         const data = (await res.json()) as { message?: string; detail?: string };
         setError(data.message ?? data.detail ?? 'Impossible de charger les commandes.');
@@ -254,12 +251,13 @@ function OrdersContent() {
       const data = (await res.json()) as Record<string, unknown>[] | { orders?: Record<string, unknown>[] };
       const raw = Array.isArray(data) ? data : (data.orders ?? []);
       setOrders(raw.map(normalizeOrder));
-    } catch {
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) return;
       setError('Erreur réseau. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
     }
-  }, [logout, router]);
+  }, []);
 
   useEffect(() => {
     fetchOrders();
@@ -456,12 +454,14 @@ function OrdersContent() {
             }
           />
         ) : (
-          <Table<Order>
-            columns={columns}
-            data={filteredOrders}
-            keyExtractor={(row) => row.id}
-            emptyMessage="Aucune commande trouvée."
-          />
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <Table<Order>
+              columns={columns}
+              data={filteredOrders}
+              keyExtractor={(row) => row.id}
+              emptyMessage="Aucune commande trouvée."
+            />
+          </div>
         )}
       </div>
 

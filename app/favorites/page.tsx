@@ -1,16 +1,15 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Heart, Home, ChevronRight } from 'lucide-react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ProductCard } from '@/components/products/ProductCard';
-import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/lib/toast-context';
+import { apiFetch, ApiUnauthorizedError } from '@/lib/api-client';
 import type { Product } from '@/lib/types';
 
 function normalizeProduct(raw: Record<string, unknown>): Product {
@@ -27,61 +26,67 @@ function normalizeProduct(raw: Record<string, unknown>): Product {
   };
 }
 
-function FavoritesContent() {
-  const router = useRouter();
-  const { logout } = useAuth();
-  const { addToast } = useToast();
+async function fetchFavoritesList(): Promise<Product[]> {
+  const res = await apiFetch('/api/favorites');
+  if (!res.ok) {
+    const data = (await res.json()) as { message?: string; detail?: string };
+    throw new Error(data.message ?? data.detail ?? 'Impossible de charger les favoris.');
+  }
+  const body = (await res.json()) as
+    | Record<string, unknown>[]
+    | { favorites?: Record<string, unknown>[] };
+  const raw = Array.isArray(body) ? body : (body.favorites ?? []);
+  return raw.map(normalizeProduct);
+}
 
+function FavoritesContent() {
+  const { addToast } = useToast();
   const [favorites, setFavorites] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [removing, setRemoving] = useState<Set<string>>(new Set());
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchFavorites = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
+    setLoadError(null);
     try {
-      const res = await fetch('/api/favorites');
-      if (res.status === 401) {
-        await logout();
-        router.replace('/login?redirect=/favorites');
+      const list = await fetchFavoritesList();
+      setFavorites(list);
+    } catch (e) {
+      if (e instanceof ApiUnauthorizedError) {
+        setFavorites([]);
         return;
       }
-      if (!res.ok) {
-        const data = (await res.json()) as { message?: string; detail?: string };
-        setError(data.message ?? data.detail ?? 'Impossible de charger les favoris.');
-        return;
-      }
-      const data = (await res.json()) as
-        | Record<string, unknown>[]
-        | { favorites?: Record<string, unknown>[] };
-      const raw = Array.isArray(data) ? data : (data.favorites ?? []);
-      setFavorites(raw.map(normalizeProduct));
-    } catch {
-      setError('Erreur réseau. Veuillez réessayer.');
+      setLoadError(e instanceof Error ? e.message : 'Impossible de charger les favoris.');
+      setFavorites([]);
     } finally {
       setIsLoading(false);
     }
-  }, [logout, router]);
+  }, []);
 
   useEffect(() => {
-    fetchFavorites();
+    void fetchFavorites();
   }, [fetchFavorites]);
 
+  const displayError = loadError;
+
+  const [removing, setRemoving] = useState<Set<string>>(new Set());
+
   const handleRemove = async (productId: string) => {
-    const previous = favorites;
-    // Optimistic update
+    const snapshot = favorites;
     setFavorites((prev) => prev.filter((p) => p.id !== productId));
     setRemoving((prev) => new Set(prev).add(productId));
     try {
-      const res = await fetch(`/api/favorites/${productId}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/favorites/${productId}`, { method: 'DELETE' });
       if (!res.ok) {
-        setFavorites(previous);
+        setFavorites(snapshot);
+        addToast('Impossible de retirer le favori.', 'error');
+        return;
+      }
+    } catch (e) {
+      if (!(e instanceof ApiUnauthorizedError)) {
+        setFavorites(snapshot);
         addToast('Impossible de retirer le favori.', 'error');
       }
-    } catch {
-      setFavorites(previous);
-      addToast('Impossible de retirer le favori.', 'error');
     } finally {
       setRemoving((prev) => {
         const next = new Set(prev);
@@ -122,13 +127,13 @@ function FavoritesContent() {
         </div>
 
         {/* Error */}
-        {error && (
+        {displayError && (
           <div
             role="alert"
             aria-live="polite"
             className="mb-6 px-4 py-3 rounded-xl bg-[var(--error-light)] text-[var(--error)] text-sm"
           >
-            {error}
+            {displayError}
           </div>
         )}
 
@@ -145,9 +150,16 @@ function FavoritesContent() {
             title="Aucun favori"
             description="Vous n'avez pas encore ajouté de produit en favori."
             action={
-              <Button variant="primary" size="sm" onClick={() => router.push('/products')}>
+              <Link
+                href="/products"
+                className={cn(
+                  'inline-flex items-center justify-center rounded-lg border font-medium transition-colors',
+                  'h-8 px-3 text-xs gap-1.5',
+                  'bg-[var(--primary)] text-[var(--primary-foreground)] hover:bg-[var(--primary-hover)] border-transparent'
+                )}
+              >
                 Découvrir les produits
-              </Button>
+              </Link>
             }
           />
         ) : (
@@ -156,6 +168,7 @@ function FavoritesContent() {
               <div key={product.id} className="relative">
                 <ProductCard product={product} />
                 <button
+                  type="button"
                   aria-label={`Retirer ${product.name} des favoris`}
                   disabled={removing.has(product.id)}
                   onClick={() => handleRemove(product.id)}

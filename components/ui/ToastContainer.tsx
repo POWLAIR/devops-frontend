@@ -12,7 +12,7 @@ export function ToastContainer() {
   return (
     <div
       aria-live="polite"
-      aria-atomic="false"
+      aria-atomic="true"
       className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none"
     >
       {toasts.map((toast) => (

@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
 import { useToast } from '@/lib/toast-context';
 import { USER_ROLES, DEFAULT_PAGE_SIZE } from '@/lib/constants';
+import { apiFetch } from '@/lib/api-client';
 import { formatPrice } from '@/lib/utils';
 import type { Product, Category } from '@/lib/types';
 import type { Column } from '@/components/ui/Table';
@@ -168,8 +169,8 @@ function ManageProductsContent() {
     setError(null);
     try {
       const [resProducts, resCategories] = await Promise.all([
-        fetch('/api/products'),
-        fetch('/api/categories'),
+        apiFetch('/api/products'),
+        apiFetch('/api/categories'),
       ]);
 
       if (resProducts.ok) {
@@ -236,10 +237,10 @@ function ManageProductsContent() {
         description: formData.description.trim() || undefined,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock, 10),
-        category_id: formData.category_id || undefined,
-        image_url: formData.image_url.trim() || undefined,
+        category: formData.category_id || undefined,
+        imageUrl: formData.image_url.trim() || undefined,
       };
-      const res = await fetch('/api/products', {
+      const res = await apiFetch('/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -290,10 +291,10 @@ function ManageProductsContent() {
         description: formData.description.trim() || undefined,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock, 10),
-        category_id: formData.category_id || undefined,
-        image_url: formData.image_url.trim() || undefined,
+        category: formData.category_id || undefined,
+        imageUrl: formData.image_url.trim() || undefined,
       };
-      const res = await fetch(`/api/products/${selectedProduct.id}`, {
+      const res = await apiFetch(`/api/products/${selectedProduct.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -327,7 +328,7 @@ function ManageProductsContent() {
     if (!selectedProduct) return;
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/products/${selectedProduct.id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/products/${selectedProduct.id}`, { method: 'DELETE' });
       if (!res.ok) {
         addToast('Erreur lors de la suppression', 'error');
         return;
@@ -357,7 +358,7 @@ function ManageProductsContent() {
     }
     setIsSavingStock(true);
     try {
-      const res = await fetch(`/api/products/${product.id}/stock`, {
+      const res = await apiFetch(`/api/products/${product.id}/stock`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stock: newStock }),

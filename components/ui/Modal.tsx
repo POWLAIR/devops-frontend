@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -35,17 +35,49 @@ export function Modal({
   closeOnBackdrop = true,
   className,
 }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKeyDown);
     document.body.style.overflow = 'hidden';
     return () => {
-      document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = '';
     };
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const container = dialogRef.current;
+    if (!container) return;
+
+    const focusable = container.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    const list = Array.from(focusable);
+    const first = list[0];
+    const last = list[list.length - 1];
+    first?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab' || list.length === 0) return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, [open, onClose]);
 
   if (!open) return null;
@@ -61,9 +93,11 @@ export function Modal({
 
       {/* Dialog */}
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
+        aria-label={title ? undefined : 'Boîte de dialogue'}
         className={cn(
           'relative z-10 w-full rounded-2xl border border-[var(--border-color)] bg-[var(--card-background)] shadow-[var(--shadow-xl)]',
           sizeClasses[size],
@@ -77,6 +111,7 @@ export function Modal({
               {title}
             </h2>
             <button
+              type="button"
               onClick={onClose}
               className="p-1.5 rounded-lg text-[var(--neutral-400)] hover:text-[var(--foreground)] hover:bg-[var(--neutral-100)] transition-colors"
               aria-label="Fermer"
